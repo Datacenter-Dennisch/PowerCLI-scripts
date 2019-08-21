@@ -24,4 +24,5 @@ foreach ($vmhost in $vmhosts) {
     $results += $resultperhost
 }
 
-$results.NICinfo.where({$_.name -eq "vmnic0"})
+#$results.NICinfo.where({$_.name -eq "vmnic0"})
+$results.NICinfo
