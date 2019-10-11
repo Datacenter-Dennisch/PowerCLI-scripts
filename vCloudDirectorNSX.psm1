@@ -53,6 +53,9 @@ function Invoke-vCDNSXRestMethod {
             #allow untrusted certificate presented by the remote system to be accepted
             #[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
         }
+        $headerDictionary = @{}
+        $base64cred = [system.convert]::ToBase64String([system.text.encoding]::ASCII.Getbytes("$($cred.GetNetworkCredential().username)@$($cred.GetNetworkCredential().Domain):$($cred.GetNetworkCredential().password)"))
+        $headerDictionary.add("Authorization", "Basic $Base64cred")
     }
     else {
 
@@ -83,29 +86,25 @@ function Invoke-vCDNSXRestMethod {
 
     }
 
-    $headerDictionary = @{}
-    $base64cred = [system.convert]::ToBase64String(
-        [system.text.encoding]::ASCII.Getbytes(
-            "$($cred.GetNetworkCredential().username)@$($cred.GetNetworkCredential().Domain):$($cred.GetNetworkCredential().password)"
-        )
-    )
-    $headerDictionary.add("Authorization", "Basic $Base64cred")
+    
 
     if ( $extraHeader ) {
         foreach ($header in $extraHeader.GetEnumerator()) {
             write-debug "$($MyInvocation.MyCommand.Name) : Adding extra header $($header.Key ) : $($header.Value)"
             if ( $pscmdlet.ParameterSetName -eq "ConnectionObj" ) {
+                $headerDictionary = $connection.Headers
                 if ( $connection.DebugLogging ) {
                     Add-Content -Path $Connection.DebugLogfile -Value "$(Get-Date -format s)  Extra Header being added to following REST call.  Key: $($Header.Key), Value: $($Header.Value)"
                 }
-            }
-            switch ($vCDversion) {
-                "v8.2" {$headerDictionary.add("accept", "application/*+xml;version=27.0")}
-                "v9.0" {$headerDictionary.add("accept", "application/*+xml;version=29.0")}
-                "v9.1" {$headerDictionary.add("accept", "application/*+xml;version=30.0")}
-                "v9.5" {$headerDictionary.add("accept", "application/*+xml;version=31.0")}
-                "v9.7" {$headerDictionary.add("accept", "application/*+xml;version=32.0")}
-                "v10.0" {$headerDictionary.add("accept", "application/*+xml;version=33.0")}
+            } else {
+                switch ($vCDversion) {
+                    "v8.2" {$headerDictionary.add("accept", "application/*+xml;version=27.0")}
+                    "v9.0" {$headerDictionary.add("accept", "application/*+xml;version=29.0")}
+                    "v9.1" {$headerDictionary.add("accept", "application/*+xml;version=30.0")}
+                    "v9.5" {$headerDictionary.add("accept", "application/*+xml;version=31.0")}
+                    "v9.7" {$headerDictionary.add("accept", "application/*+xml;version=32.0")}
+                    "v10.0" {$headerDictionary.add("accept", "application/*+xml;version=33.0")}
+                }
             }
         }
     }
@@ -113,13 +112,13 @@ function Invoke-vCDNSXRestMethod {
 
     $FullURI = "$($protocol)://$($server):$($Port)$($URI)"
     write-debug "$($MyInvocation.MyCommand.Name) : Method: $method, URI: $FullURI, Body: `n$($body )"
-
+    
     if ( $pscmdlet.ParameterSetName -eq "BearerAuth" ) {
         if ( $connection.DebugLogging ) {
             Add-Content -Path $Connection.DebugLogfile -Value "$(Get-Date -format s)  REST Call to NSX-T Manager via invoke-restmethod : Method: $method, URI: $FullURI, Body: `n$($body)"
         }
     }
-
+    write-host $headerDictionary 
     #do rest call
     try {
         if ( $PsBoundParameters.ContainsKey('Body')) {
@@ -129,38 +128,13 @@ function Invoke-vCDNSXRestMethod {
         }
     }
     catch {
-
         #Get response from the exception
-        $response = $_.exception.response
-        if ($response) {
-            $responseStream = $_.exception.response.GetResponseStream()
-            $reader = New-Object system.io.streamreader($responseStream)
-            $responseBody = $reader.readtoend()
-            $ErrorString = "Invoke-vCDNSXRestMethod : Exception occured calling invoke-restmethod. $($response.StatusCode.value__) : $($response.StatusDescription) : Response Body: $($responseBody)"
-
-            if ( $pscmdlet.ParameterSetName -eq "ConnectionObj" ) {
-                if ( $connection.DebugLogging ) {
-                    Add-Content -Path $Connection.DebugLogfile -Value "$(Get-Date -format s)  REST Call to NSX-T Manager failed: $ErrorString"
-                }
-            }
-
-            throw $ErrorString
-        }
-        else {
-            if ( $pscmdlet.ParameterSetName -eq "ConnectionObj" ) {
-                if ( $connection.DebugLogging ) {
-                    Add-Content -Path $Connection.DebugLogfile -Value "$(Get-Date -format s)  REST Call to NSX-T Manager failed with exception: $($_.Exception.Message).  ScriptStackTrace:`n $($_.ScriptStackTrace)"
-                }
-            }
-            throw $_
-        }
-
-
-    }
+        $return = $_.exception.response
+     }
     switch ( $response ) {
         { $_ -is [xml] } { $FormattedResponse = "`n$($response.outerxml | Format-Xml)" }
         { $_ -is [System.String] } { $FormattedResponse = $response }
-        { $_ -is [json] } { $FormattedResponse = $response }
+        #{ $_ -is [json] } { $FormattedResponse = $response }
         default { $formattedResponse = "Response type unknown" }
     }
     $FormattedResponse = $response 
@@ -192,24 +166,50 @@ function Invoke-vCDNSXRestMethod {
 
 
 function Connect-vCSNSXAPI {
+
 param (
         [Parameter (Mandatory=$true)]
             #vCloud Director ip address or FQDN
             [string]$Server,
-        [Parameter (Mandatory=$false)]
+        [Parameter (Mandatory=$true)]
             #TCP Port on -server to connect to
             [int]$Port="443",
-        [Parameter (Mandatory=$false)]
+        [Parameter (Mandatory=$true)]
             #Protocol - HTTP/HTTPS
             [string]$Protocol="https",
-        [Parameter (Mandatory=$false)]
+        [Parameter (Mandatory=$true)]
             #username and password
             [System.Management.Automation.PSCredential]$cred,
-        [Parameter (Mandatory=$false)]
+        [Parameter (Mandatory=$true)]
             #domain/tenantIT
             [string]$TenantID
     )
 
+    
+    $secpasswd = ConvertTo-SecureString $($cred.GetNetworkCredential().password) -AsPlainText -Force
+    $username = "$($cred.GetNetworkCredential().username)"+"@"+"$($TenantID)"
+    $vCDcredential = New-Object System.Management.Automation.PSCredential ($username, $secpasswd)
 
+    
+    try {
+        $response = Invoke-vCDNSXRestMethod -server $Server -port $port -protocol $Protocol -cred $vCDcredential -method post -URI "/api/sessions" -vCDversion v10.0
+    }
+    catch {
 
+        Throw "Unable to connect to vCloud Director at $Server.  $_"
+    }
+    
+    $headers = @{}
+    $headers.add("accept", $return.Headers.'Content-Type')
+
+    $ConnectionObj = [PSCustomObject]@{
+        Server = $Server
+        Port = $Port
+        Protocol = $Protocol
+        Authentication = "Bearer"
+        BearerAccessToken = $response.Headers.'X-VMWARE-VCLOUD-ACCESS-TOKEN'
+        Headers = @{accept=$response.Headers.'Content-Type'}
+    }
+    Set-Variable -Name DefaultvCDConnection -value $ConnectionObj -scope Global
+    $Response
 }
