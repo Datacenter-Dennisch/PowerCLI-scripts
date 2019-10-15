@@ -69,7 +69,7 @@ function Invoke-vCDNSXRestMethod {
                 throw "Not connected.  Connect to vCloud Director with Connect-vCDServer first."
             }
             else {
-                Write-Debug "$($MyInvocation.MyCommand.Name) : Using default connection"
+                Write-host "$($MyInvocation.MyCommand.Name) : Using default connection"
                 $connection = $DefaultvCDNSXConnection
             }
         }
@@ -115,10 +115,10 @@ function Invoke-vCDNSXRestMethod {
     
     if ( $pscmdlet.ParameterSetName -eq "BearerAuth" ) {
         if ( $connection.DebugLogging ) {
-            Add-Content -Path $Connection.DebugLogfile -Value "$(Get-Date -format s)  REST Call to NSX-T Manager via invoke-restmethod : Method: $method, URI: $FullURI, Body: `n$($body)"
+            Add-Content -Path $Connection.DebugLogfile -Value "$(Get-Date -format s)  REST Call to vCloud Director via invoke-restmethod : Method: $method, URI: $FullURI, Body: `n$($body)"
         }
     }
-    write-host $headerDictionary 
+    
     #do rest call
     try {
         if ( $PsBoundParameters.ContainsKey('Body')) {
@@ -185,9 +185,16 @@ param (
             [string]$TenantID
     )
 
-    
     $secpasswd = ConvertTo-SecureString $($cred.GetNetworkCredential().password) -AsPlainText -Force
-    $username = "$($cred.GetNetworkCredential().username)"+"@"+"$($TenantID)"
+    if (!$cred.GetNetworkCredential().Domain) {
+        if (!$TenantID) {
+            Write-Host "No Tenant specified! please add Domain/TenantID"
+        } else {
+            $username = "$($cred.GetNetworkCredential().username)"+"@"+"$($TenantID)"
+        }
+    } else {
+        $username = "$($cred.GetNetworkCredential().username)"
+    }
     $vCDcredential = New-Object System.Management.Automation.PSCredential ($username, $secpasswd)
 
     
@@ -211,5 +218,6 @@ param (
         Headers = @{accept=$response.Headers.'Content-Type'}
     }
     Set-Variable -Name DefaultvCDConnection -value $ConnectionObj -scope Global
+    #Set-Variable -Name DefaultvCDConnection -value $null -scope Global
     $Response
 }
