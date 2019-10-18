@@ -105,8 +105,7 @@ function Invoke-vCDNSXRestMethod {
     
     #do rest call
     write-host "executing $($Method) : $($FullURI)"
-    $headerDictionary | Format-List
-    try {
+        try {
         if ( $PsBoundParameters.ContainsKey('Body')) {
             $response = invoke-restmethod -method $method -headers $headerDictionary -uri $FullURI -body $body -TimeoutSec $Timeout -SkipCertificateCheck -ResponseHeadersVariable responseHeaders
         } else {
@@ -143,7 +142,7 @@ function Invoke-vCDNSXRestMethod {
     write-debug "$($MyInvocation.MyCommand.Name) : Closing connections to $FullURI."
     
     $return = [PSCustomObject]@{
-        xml     = $response.xml
+        xml     = $response.outerxml
         Session = $response.Session
         Headers = $responseHeaders
     }
@@ -218,10 +217,24 @@ param (
         Set-Variable -Name DefaultvCDNSXonnection -value $ConnectionObj -scope Global
         #Set-Variable -Name DefaultvCDNSXonnection -value $null -scope Global
         $OrgResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/org"
-        $OrgResponse.outerxml
+
     } else {
         Write-Error "Username or Password incorrect"
     }
     
-    $response
+}
+
+function Disconnect-vCSNSXAPI {
+
+        if (!$DefaultvCDNSXonnection) {
+            Write-Error "Not connected to a (default) vCloud Director server"
+        } else {
+            write-host -ForegroundColor Yellow "Connected to (default) vCloud Director server at: $($DefaultvCDNSXonnection.server)"
+            $answer = read-host "Are you sure you want to disconnect (y/n)?"
+            if ($answer.ToLower() -eq "y") {
+                Set-Variable -Name DefaultvCDNSXonnection -value $null -scope Global
+                write-host "Succesfully disconnected!"
+            }
+
+        }
 }
