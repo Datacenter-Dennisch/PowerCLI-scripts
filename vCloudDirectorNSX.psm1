@@ -30,7 +30,7 @@ function Invoke-vCDNSXRestMethod {
         [Parameter (ParameterSetName="BearerAuth")]
             #Content to be sent to server when method is Put/Post/Patch
             [string]$body = "",
-        [Parameter (Mandatory=$false,ParameterSetName="BasicAuth")]
+            [Parameter (Mandatory=$false,ParameterSetName="BasicAuth")]
         [Parameter (ParameterSetName="BearerAuth")]
             #Set acceptable API version
             [Validateset("v8.2","v9.0","v9.1","v9.5","v9.7","v10.0")]
@@ -49,7 +49,7 @@ function Invoke-vCDNSXRestMethod {
     Write-Debug "$($MyInvocation.MyCommand.Name) : ParameterSetName : $($pscmdlet.ParameterSetName)"
 
     if ($pscmdlet.ParameterSetName -eq "BasicAuth") {
-        write-host "using basic-authentication"
+        #write-host "using basic-authentication"
         if ( -not $ValidateCertificate) {
             #allow untrusted certificate presented by the remote system to be accepted
             #[System.Net.ServicePointManager]::CertificatePolicy = New-Object TrustAllCertsPolicy
@@ -59,7 +59,7 @@ function Invoke-vCDNSXRestMethod {
         $headerDictionary.add("Authorization", "Basic $Base64cred")
     }
     else {
-        write-host "using Bearer-authentication"
+        #write-host "using Bearer-authentication"
         #ensure we were either called with a connection or there is a defaultConnection (user has
         #called connect-nsxserver)
         #Little Grr - $connection is a defined variable with no value so we cant use test-path
@@ -70,20 +70,21 @@ function Invoke-vCDNSXRestMethod {
                 throw "Not connected.  Connect to vCloud Director with Connect-vCSNSXAPI first."
             }
             else {
-                Write-host "$($MyInvocation.MyCommand.Name) : Using default connection"
+                #Write-host "$($MyInvocation.MyCommand.Name) : Using default connection"
                 $connection = $DefaultvCDNSXonnection
             }
         }
         $headerDictionary = @{}
-        $headerDictionary.add("Authorization", "Bearer $($DefaultvCDNSXonnection.BearerAccessToken)")
+        $headerDictionary.add("Authorization", "Bearer $($connection.BearerAccessToken)")
         $server = $connection.Server
         $port = $connection.Port
         $protocol = $connection.Protocol
     }
 
 
-    if ( $pscmdlet.ParameterSetName -eq "ConnectionObj" ) {
-        $headerDictionary = $connection.Headers
+    if ( $pscmdlet.ParameterSetName -eq "BearerAuth" ) {
+        $headerDictionary += $connection.Headers
+        
     } else {
         if ($vCDversion) {
             switch ($vCDversion) {
@@ -99,35 +100,31 @@ function Invoke-vCDNSXRestMethod {
         }
     }
 
-
     $FullURI = "$($protocol)://$($server):$($Port)$($URI)"
     write-debug "$($MyInvocation.MyCommand.Name) : Method: $method, URI: $FullURI, Body: `n$($body )"
     
-    if ( $pscmdlet.ParameterSetName -eq "BearerAuth" ) {
-        if ( $connection.DebugLogging ) {
-            Add-Content -Path $Connection.DebugLogfile -Value "$(Get-Date -format s)  REST Call to vCloud Director via invoke-restmethod : Method: $method, URI: $FullURI, Body: `n$($body)"
-        }
-    }
-    
     #do rest call
+    write-host "executing $($Method) : $($FullURI)"
+    $headerDictionary | Format-List
     try {
         if ( $PsBoundParameters.ContainsKey('Body')) {
             $response = invoke-restmethod -method $method -headers $headerDictionary -uri $FullURI -body $body -TimeoutSec $Timeout -SkipCertificateCheck -ResponseHeadersVariable responseHeaders
         } else {
-            $response = invoke-restmethod -method $method -headers $headerDictionary -uri $FullURI -TimeoutSec $Timeout -SkipCertificateCheck -ResponseHeadersVariable responseHeaders
+            $response = invoke-restmethod -method $method -uri $FullURI -headers $headerDictionary -TimeoutSec $Timeout -SkipCertificateCheck -ResponseHeadersVariable responseHeaders
+            
         }
     }
     catch {
         #Get response from the exception
         $return = $_.exception.response
      }
-    switch ( $response ) {
-        { $_ -is [xml] } { $FormattedResponse = "`n$($response.outerxml | Format-Xml)" }
-        { $_ -is [System.String] } { $FormattedResponse = $response }
-        #{ $_ -is [json] } { $FormattedResponse = $response }
-        default { $formattedResponse = "Response type unknown" }
-    }
-    $FormattedResponse = $response 
+    #switch ( $response ) {
+    #    { $_ -is [xml] } { $FormattedResponse = "`n$($response.outerxml | Format-Xml)" }
+    #    #{ $_ -is [System.String] } { $FormattedResponse = $response }
+    ##    #{ $_ -is [json] } { $FormattedResponse = $response }
+    #    default { $formattedResponse = "Response type unknown" }
+    #}
+    #$FormattedResponse = $response 
 
     write-debug "$($MyInvocation.MyCommand.Name) : Response: $FormattedResponse"
     if ( $pscmdlet.ParameterSetName -eq "BearerAuth" ) {
@@ -148,7 +145,7 @@ function Invoke-vCDNSXRestMethod {
     $return = [PSCustomObject]@{
         xml     = $response.xml
         Session = $response.Session
-        Headers    = $responseHeaders
+        Headers = $responseHeaders
     }
     #Return
     $return
@@ -197,20 +194,31 @@ param (
     }
     
     if ($response.Headers.'X-VMWARE-VCLOUD-ACCESS-TOKEN') {
-        write-host -ForegroundColor Yellow "Succesfully connected to vCloud Director at $($Server)"
+        
         $headers = @{}
-        $headers.add("accept", $return.Headers.'Content-Type')
-
+        [string]$contenttype = $response.Headers.'Content-Type'
+        $vCDversion = ($contenttype).Substring($contenttype.IndexOf('=')+1,4)
+        write-host -ForegroundColor Yellow "Succesfully connected to vCloud Director at $($Server) with API version $($vCDversion)"
+        switch ($vCDversion) {
+            "27.0" {$headers.add("accept", "application/*+xml;version=27.0")}
+            "29.0" {$headers.add("accept", "application/*+xml;version=29.0")}
+            "30.0" {$headers.add("accept", "application/*+xml;version=30.0")}
+            "31.0" {$headers.add("accept", "application/*+xml;version=31.0")}
+            "32.0" {$headers.add("accept", "application/*+xml;version=32.0")}
+            "33.0" {$headers.add("accept", "application/*+xml;version=33.0")}
+        }
         $ConnectionObj = [PSCustomObject]@{
             Server = $Server
             Port = $Port
             Protocol = $Protocol
             Authentication = "Bearer"
             BearerAccessToken = $response.Headers.'X-VMWARE-VCLOUD-ACCESS-TOKEN'
-            Headers = @{accept=$response.Headers.'Content-Type'}
+            Headers = $headers
         }
         Set-Variable -Name DefaultvCDNSXonnection -value $ConnectionObj -scope Global
         #Set-Variable -Name DefaultvCDNSXonnection -value $null -scope Global
+        $OrgResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/org"
+        $OrgResponse.outerxml
     } else {
         Write-Error "Username or Password incorrect"
     }
