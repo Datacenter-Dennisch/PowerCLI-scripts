@@ -259,7 +259,7 @@ function Get-vCDNSXOrg {
 function Get-vCDNSXOrgVDC {
 
 param (
-    [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+    [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
     #Vdc Organization GUID
     [string]$OrgGuid
 )
@@ -271,9 +271,118 @@ param (
     }
 
     $vDCReturn = [PSCustomObject]@{
-        VdcName = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.name
-        VdcHref = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.href
-        VdcGuid = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.id.split(":")[3]
+        OrgVdcName = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.name
+        OrgVdcHref = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.href
+        OrgVdcGuid = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.id.split(":")[3]
     }
     $vDCReturn 
+}
+function Get-vCDNSXIpset {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid
+    )
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $IpSetObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/ipset/scope/$($OrgVdcGuid)"
+    }
+
+    $IpSetObjectReturn = @()
+    foreach ($IpSetXMLObject in $IpSetObjResponse.xml.list.ipset) {
+
+        $IpSetPSObject = [PSCustomObject]@{
+            IpSetName = $IpSetXMLObject.name
+            IpSetValue = $IpSetXMLObject.value
+            IpSetGuid = $IpSetXMLObject.objectId
+            IpSetInheritanceAllowed = $IpSetXMLObject.inheritanceAllowed
+        }
+        $IpSetObjectReturn += $IpSetPSObject
+    }
+    $IpSetObjectReturn 
+}
+
+function Get-vCDNSXMacset {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid
+    )
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $MacsetObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/macset/scope/$($OrgVdcGuid)"
+    }
+
+    $MacsetXMLObjectReturn = @()
+    foreach ($MacsetXMLObject in $MacsetObjResponse.xml.list.macset) {
+
+        $IpSetPSObject = [PSCustomObject]@{
+            MacsetName = $MacsetXMLObject.name
+            MacsetValue = $MacsetXMLObject.value
+            MacsetGuid = $MacsetXMLObject.objectId
+            MacsetInheritanceAllowed = $MacsetXMLObject.inheritanceAllowed
+        }
+        $MacsetXMLObjectReturn += $IpSetPSObject
+    }
+    $MacsetXMLObjectReturn 
+}
+
+function Get-vCDNSXService {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid
+    )
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $ServiceObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/application/scope/$($OrgVdcGuid)"
+    }
+
+    $ServiceXMLObjectReturn = @()
+    foreach ($ServiceXMLObject in $ServiceObjResponse.xml.list.application) {
+
+        $ServicePSObject = [PSCustomObject]@{
+            ServiceName = $ServiceXMLObject.name
+            ServiceValue = $ServiceXMLObject.element
+            ServiceGuid = $ServiceXMLObject.objectId
+        }
+        $ServiceXMLObjectReturn += $ServicePSObject
+    }
+    $ServiceXMLObjectReturn 
+}
+
+function Get-vCDNSXServiceGroup {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid
+    )
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $ServiceGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/applicationgroup/scope/$($OrgVdcGuid)"
+    }
+
+    $ServiceGroupXMLObjectReturn = @()
+    foreach ($ServiceGroupXMLObject in $ServiceGroupObjResponse.xml.list.applicationgroup) {
+
+        $ServiceGroupPSObject = [PSCustomObject]@{
+            ServiceGroupName = $ServiceGroupXMLObject.name
+            ServiceGroupMember = $ServiceGroupXMLObject.member
+            ServiceGroupGuid = $ServiceGroupXMLObject.objectId
+        }
+        $ServiceGroupXMLObjectReturn += $ServiceGroupPSObject
+    }
+    $ServiceGroupXMLObjectReturn 
 }
