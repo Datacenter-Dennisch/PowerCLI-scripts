@@ -142,7 +142,7 @@ function Invoke-vCDNSXRestMethod {
     write-debug "$($MyInvocation.MyCommand.Name) : Closing connections to $FullURI."
     
     $return = [PSCustomObject]@{
-        xml     = $response.outerxml
+        xml     = [xml]$response.outerxml
         Session = $response.Session
         Headers = $responseHeaders
     }
@@ -215,26 +215,65 @@ param (
             Headers = $headers
         }
         Set-Variable -Name DefaultvCDNSXonnection -value $ConnectionObj -scope Global
-        #Set-Variable -Name DefaultvCDNSXonnection -value $null -scope Global
-        $OrgResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/org"
-
+        
     } else {
         Write-Error "Username or Password incorrect"
     }
-    
+    $response
 }
 
 function Disconnect-vCSNSXAPI {
 
-        if (!$DefaultvCDNSXonnection) {
-            Write-Error "Not connected to a (default) vCloud Director server"
-        } else {
-            write-host -ForegroundColor Yellow "Connected to (default) vCloud Director server at: $($DefaultvCDNSXonnection.server)"
-            $answer = read-host "Are you sure you want to disconnect (y/n)?"
-            if ($answer.ToLower() -eq "y") {
-                Set-Variable -Name DefaultvCDNSXonnection -value $null -scope Global
-                write-host "Succesfully disconnected!"
-            }
-
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server"
+    } else {
+        write-host -ForegroundColor Yellow "Connected to (default) vCloud Director server at: $($DefaultvCDNSXonnection.server)"
+        $answer = read-host "Are you sure you want to disconnect (y/n)?"
+        if ($answer.ToLower() -eq "y") {
+            Set-Variable -Name DefaultvCDNSXonnection -value $null -scope Global
+            write-host "Succesfully disconnected!"
         }
+    }
+}
+
+function Get-vCDNSXOrg {
+
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $OrgResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/org"
+        $OrgGuid = $OrgResponse.xml.OrgList.org.href.substring($OrgResponse.xml.OrgList.org.href.LastIndexOf('/')+1)
+        $OrgName = ($OrgResponse.xml).OrgList.Org.name
+        $OrgHref = $OrgResponse.xml.OrgList.org.href
+        $OrgAPI = $OrgResponse.xml.OrgList.org.href.Substring(($OrgResponse.xml.OrgList.org.href.IndexOf($DefaultvCDNSXonnection.server)+($DefaultvCDNSXonnection.server).Length))
+    }
+    $OrgResponse = [PSCustomObject]@{
+        OrgName = $OrgName
+        OrgGUID = $OrgGuid
+        Orghref = $OrgHref
+        OrgApi  = $OrgAPI 
+    }
+    $OrgResponse 
+}
+
+function Get-vCDNSXOrgVDC {
+
+param (
+    [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+    #Vdc Organization GUID
+    [string]$OrgGuid
+)
+
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $VdcResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/admin/org/$($OrgGuid)"
+    }
+
+    $vDCReturn = [PSCustomObject]@{
+        VdcName = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.name
+        VdcHref = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.href
+        VdcGuid = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.id.split(":")[3]
+    }
+    $vDCReturn 
 }
