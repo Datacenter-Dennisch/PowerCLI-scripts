@@ -386,3 +386,83 @@ function Get-vCDNSXServiceGroup {
     }
     $ServiceGroupXMLObjectReturn 
 }
+
+function Get-vCDNSXSecurityGroup {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid
+    )
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/scope/$($OrgVdcGuid)"
+    }
+
+    $SecurityGroupXMLObjectReturn = @()
+    foreach ($SecurityGroupXMLObject in $SecurityGroupObjResponse.xml.list.securitygroup) {
+
+        $SecurityGroupPSObject = [PSCustomObject]@{
+            SecurityGroupName = $SecurityGroupXMLObject.name
+            SecurityGroupMember = $SecurityGroupXMLObject.member
+            SecurityGroupGuid = $SecurityGroupXMLObject.objectId
+        }
+        $SecurityGroupXMLObjectReturn += $SecurityGroupPSObject
+    }
+    $SecurityGroupXMLObjectReturn 
+}
+
+function Get-vCDNSXSecurityTag{
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid
+    )
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $SecuritytagObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitytags/tag/scope/$($OrgVdcGuid)"
+    }
+
+    $SecuritytagsXMLObjectReturn = @()
+    foreach ($SecuritytagsXMLObject in $SecuritytagObjResponse.xml.securityTags.securityTag) {
+
+        $SecuritytagsPSObject = [PSCustomObject]@{
+            SecuritytagName = $SecuritytagsXMLObject.name
+            SecuritytagGuid = $SecuritytagsXMLObject.objectId
+        }
+        $SecuritytagsXMLObjectReturn += $SecuritytagsPSObject
+    }
+    $SecuritytagsXMLObjectReturn 
+}
+
+function Get-vCDNSXSecurityTagVMs{
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Security Tag GUID
+        [string]$SecuritytagGuid
+    )
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $SecuritytagVMObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitytags/tag/$SecuritytagGuid/vm"
+    }
+
+    $SecuritytagVmXMLObjectReturn = @()
+    foreach ($SecuritytagVmXMLObject in $SecuritytagVMObjResponse.xml.basicinfolist.basicinfo) {
+
+        $SecuritytagVmPSObject = [PSCustomObject]@{
+            SecuritytagVmName = $SecuritytagVmXMLObject.name
+            SecuritytagVmGuid = $SecuritytagVmXMLObject.objectId
+        }
+        $SecuritytagVmXMLObjectReturn += $SecuritytagVmPSObject
+    }
+    $SecuritytagVmXMLObjectReturn 
+}
+
