@@ -99,7 +99,7 @@ function Invoke-vCDNSXRestMethod {
             $extraheader | ForEach-Object {$headerDictionary.add($_)}
         }
     }
-
+    $headerDictionary.add("Content-Type", "application/xml")
     $FullURI = "$($protocol)://$($server):$($Port)$($URI)"
     write-debug "$($MyInvocation.MyCommand.Name) : Method: $method, URI: $FullURI, Body: `n$($body )"
     
@@ -466,3 +466,32 @@ function Get-vCDNSXSecurityTagVMs{
     $SecuritytagVmXMLObjectReturn 
 }
 
+function New-vCDNSXIpset {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid,
+        [Parameter(Mandatory=$true)] 
+        #Name of the IpSet object
+        [string]$IpSetName,
+        [Parameter( Mandatory=$true)] 
+        #Value of the IpSet object
+        [string]$IpSetValue,
+        [Parameter( Mandatory=$false)] 
+        #Vdc Organization GUID
+        [string]$Description
+    )
+
+    [xml] $IpSetBody = '<ipset><type><typeName>IPSet</typeName></type><description>’ + $description + ‘</description><name>’ + $IpSetName + ‘</name><value>’ + $IpSeIpSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></ipset>'
+    [string] $IpSetBody = '<ipset><description>’ + $description + ‘</description><name>’ + $IpSetName + ‘</name><value>’ + $IpSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></ipset>'
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $IpSetObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/ipset/$($OrgVdcGuid)" -body $IpSetBody
+    }
+    $IpSetObjResponse.Headers
+    
+    $IpSetObjResponse 
+}
