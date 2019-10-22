@@ -466,6 +466,7 @@ function Get-vCDNSXSecurityTagVMs{
     $SecuritytagVmXMLObjectReturn 
 }
 
+
 function New-vCDNSXIpset {
 
     param (
@@ -483,7 +484,6 @@ function New-vCDNSXIpset {
         [string]$Description
     )
 
-    [xml] $IpSetBody = '<ipset><type><typeName>IPSet</typeName></type><description>’ + $description + ‘</description><name>’ + $IpSetName + ‘</name><value>’ + $IpSeIpSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></ipset>'
     [string] $IpSetBody = '<ipset><description>’ + $description + ‘</description><name>’ + $IpSetName + ‘</name><value>’ + $IpSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></ipset>'
     
     if (!$DefaultvCDNSXonnection) {
@@ -491,7 +491,65 @@ function New-vCDNSXIpset {
     } else {
         $IpSetObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/ipset/$($OrgVdcGuid)" -body $IpSetBody
     }
-    $IpSetObjResponse.Headers
+    if ($IpSetObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created IpSet Object $($IpSetName)"}
+    $IpSetObjReturn = Get-vCDNSXIpset -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.IpSetName -eq $IpSetName}
     
-    $IpSetObjResponse 
+    $IpSetObjReturn
+}
+
+function New-vCDNSXMacSet {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid,
+        [Parameter(Mandatory=$true)] 
+        #Name of the MacSet object
+        [string]$MacSetName,
+        [Parameter( Mandatory=$true)] 
+        #Value of the MacSet object
+        [string]$MacSetValue,
+        [Parameter( Mandatory=$false)] 
+        #Vdc Organization GUID
+        [string]$Description
+    )
+
+    [string] $MacSetBody = '<macset><description>’ + $description + ‘</description><name>’ + $MacSetName + ‘</name><value>’ + $MacSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></macset>'
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $MacSetObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/macset/$($OrgVdcGuid)" -body $MacSetBody
+    }
+    if ($MacSetObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created MacSet Object $($MacSetName)"}
+    $MacSetObjReturn = Get-vCDNSXMacSet -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.MacSetName -eq $MacSetName}
+    
+    $MacSetObjReturn
+}
+
+function New-vCDNSXSecurityGroup {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid,
+        [Parameter(Mandatory=$true)] 
+        #Name of the SecurityGroup object
+        [string]$SecurityGroupName,
+        [Parameter( Mandatory=$false)] 
+        #Vdc Organization GUID
+        [string]$Description
+    )
+
+    [string] $SecurityGroupBody = '<securitygroup><description>’ + $description + ‘</description><name>’ + $SecurityGroupName + ‘</name><scope><id>globalroot-0</id><objectTypeName>GlobalRoot</objectTypeName><name>Global</name></scope></securitygroup>'
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+    } else {
+        $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/securitygroup/bulk/$($OrgVdcGuid)" -body $SecurityGroupBody
+    }
+    if ($SecurityGroupObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created SecurityGroup Object $($SecurityGroupName)"}
+    $SecurityGroupObjReturn = Get-vCDNSXSecurityGroup -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.SecurityGroupName -eq $SecurityGroupName}
+    
+    $SecurityGroupObjReturn
 }
