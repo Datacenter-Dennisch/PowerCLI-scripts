@@ -239,7 +239,7 @@ function Disconnect-vCSNSXAPI {
 function Get-vCDNSXOrg {
 
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $OrgResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/org"
         $OrgGuid = $OrgResponse.xml.OrgList.org.href.substring($OrgResponse.xml.OrgList.org.href.LastIndexOf('/')+1)
@@ -265,7 +265,7 @@ param (
 )
 
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $VdcResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/admin/org/$($OrgGuid)"
     }
@@ -286,7 +286,7 @@ function Get-vCDNSXIpset {
     )
     
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $IpSetObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/ipset/scope/$($OrgVdcGuid)"
     }
@@ -314,7 +314,7 @@ function Get-vCDNSXMacset {
     )
     
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $MacsetObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/macset/scope/$($OrgVdcGuid)"
     }
@@ -342,7 +342,7 @@ function Get-vCDNSXService {
     )
     
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $ServiceObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/application/scope/$($OrgVdcGuid)"
     }
@@ -369,7 +369,7 @@ function Get-vCDNSXServiceGroup {
     )
     
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $ServiceGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/applicationgroup/scope/$($OrgVdcGuid)"
     }
@@ -396,7 +396,7 @@ function Get-vCDNSXSecurityGroup {
     )
     
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/scope/$($OrgVdcGuid)"
     }
@@ -423,7 +423,7 @@ function Get-vCDNSXSecurityTag{
     )
     
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $SecuritytagObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitytags/tag/scope/$($OrgVdcGuid)"
     }
@@ -449,7 +449,7 @@ function Get-vCDNSXSecurityTagVMs{
     )
     
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $SecuritytagVMObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitytags/tag/$SecuritytagGuid/vm"
     }
@@ -487,7 +487,7 @@ function New-vCDNSXIpset {
     [string] $IpSetBody = '<ipset><description>’ + $description + ‘</description><name>’ + $IpSetName + ‘</name><value>’ + $IpSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></ipset>'
     
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $IpSetObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/ipset/$($OrgVdcGuid)" -body $IpSetBody
     }
@@ -517,7 +517,7 @@ function New-vCDNSXMacSet {
     [string] $MacSetBody = '<macset><description>’ + $description + ‘</description><name>’ + $MacSetName + ‘</name><value>’ + $MacSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></macset>'
     
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $MacSetObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/macset/$($OrgVdcGuid)" -body $MacSetBody
     }
@@ -544,7 +544,7 @@ function New-vCDNSXSecurityGroup {
     [string] $SecurityGroupBody = '<securitygroup><description>’ + $description + ‘</description><name>’ + $SecurityGroupName + ‘</name><scope><id>globalroot-0</id><objectTypeName>GlobalRoot</objectTypeName><name>Global</name></scope></securitygroup>'
     
     if (!$DefaultvCDNSXonnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vDCNSXAPI cmdlet"
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/securitygroup/bulk/$($OrgVdcGuid)" -body $SecurityGroupBody
     }
@@ -552,4 +552,31 @@ function New-vCDNSXSecurityGroup {
     $SecurityGroupObjReturn = Get-vCDNSXSecurityGroup -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.SecurityGroupName -eq $SecurityGroupName}
     
     $SecurityGroupObjReturn
+}
+
+function New-vCDNSXSecurityTag {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid,
+        [Parameter(Mandatory=$true)] 
+        #Name of the SecurityTag object
+        [string]$SecurityTagName,
+        [Parameter( Mandatory=$false)] 
+        #Vdc Organization GUID
+        [string]$Description
+    )
+
+    [string] $SecurityTagBody = '<securityTag><description>’ + $description + ‘</description><name>’ + $SecurityTagName + ‘</name><isUniversal>false</isUniversal><extendedAttributes></extendedAttributes></securityTag>'
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+    } else {
+        $SecurityTagObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/securitytags/tag" -body $SecurityTagBody
+    }
+    if ($SecurityTagObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created SecurityTag Object $($SecurityTagName)"}
+    $SecurityTagObjReturn = Get-vCDNSXSecurityTag -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.SecurityTagName -eq $SecurityTagName}
+    
+    $SecurityTagObjReturn
 }
