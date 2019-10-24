@@ -277,6 +277,41 @@ param (
     }
     $vDCReturn 
 }
+
+function Get-vCDNSXOrgVDCVMs {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid
+    )
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+    } else {
+        if ($OrgVdcGuid) {
+            $OrgVdcvAppResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/vApps/query?vdc=$($OrgVdcGuid)"
+        } else {
+            $OrgVdcvAppResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/vApps/query"
+        }
+    }
+
+    $OrgVdcvAppReturn = @()
+    foreach ($OrgVdcvAppObject in $OrgVdcvAppResponse.xml.QueryResultRecords.VAppRecord) {
+
+        $OrgVdcvAppsObjectReturn = [PSCustomObject]@{
+            OrgVdcvAppName = $OrgVdcvAppObject.name
+            OrgVdcvAppOwnerName = $OrgVdcvAppObject.ownerName
+            OrgVdcvAppHref = $OrgVdcvAppObject.href
+            OrgVdcvAppStatus = $OrgVdcvAppObject.status
+            OrgVdcvAppVdc = $OrgVdcvAppObject.vdc
+        }
+        $OrgVdcvAppReturn += $OrgVdcvAppsObjectReturn
+
+    }
+    $OrgVdcvAppReturn
+}
+
 function Get-vCDNSXIpset {
 
     param (
