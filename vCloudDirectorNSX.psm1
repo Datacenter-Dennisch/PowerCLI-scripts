@@ -688,13 +688,13 @@ function Add-vCDNSXSecurityGroupMember {
         [string]$SecurityGroupGuid,
         [Parameter( Mandatory=$false)] 
         #Vdc Organization GUID
-        [string]$VmVcdId
+        [string]$VcdId
     )
     
     if (!$DefaultvCDNSXonnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method put -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($VmVcdId)"
+        $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method put -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($VcdId)"
         if ($SecurityGroupObjResponse.Headers) {
             $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/$($SecurityGroupGuid)"
         }
