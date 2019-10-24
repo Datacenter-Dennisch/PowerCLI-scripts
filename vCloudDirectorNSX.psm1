@@ -151,7 +151,7 @@ function Invoke-vCDNSXRestMethod {
 }
 
 
-function Connect-vCSNSXAPI {
+function Connect-vCDNSXAPI {
 
 param (
         [Parameter (Mandatory=$true)]
@@ -222,7 +222,7 @@ param (
     $response
 }
 
-function Disconnect-vCSNSXAPI {
+function Disconnect-vCDNSXAPI {
 
     if (!$DefaultvCDNSXonnection) {
         Write-Error "Not connected to a (default) vCloud Director server"
@@ -282,7 +282,10 @@ function Get-vCDNSXIpset {
     param (
         [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
         #Vdc Organization GUID
-        [string]$OrgVdcGuid
+        [string]$OrgVdcGuid,
+        [Parameter( Mandatory=$false)] 
+        #IPSet object matches IpSetName
+        [string]$IpSetName
     )
     
     if (!$DefaultvCDNSXonnection) {
@@ -302,6 +305,7 @@ function Get-vCDNSXIpset {
         }
         $IpSetObjectReturn += $IpSetPSObject
     }
+    if ($IpSetName) {$IpSetObjectReturn = $IpSetObjectReturn | Where-Object {$_.IpSetName -match $IpSetName}}
     $IpSetObjectReturn 
 }
 
@@ -310,7 +314,10 @@ function Get-vCDNSXMacset {
     param (
         [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
         #Vdc Organization GUID
-        [string]$OrgVdcGuid
+        [string]$OrgVdcGuid,
+        [Parameter( Mandatory=$false)] 
+        #MacSet object matches MacSetName
+        [string]$MacSetName
     )
     
     if (!$DefaultvCDNSXonnection) {
@@ -330,6 +337,7 @@ function Get-vCDNSXMacset {
         }
         $MacsetXMLObjectReturn += $IpSetPSObject
     }
+    if ($MacSetName) {$MacsetXMLObjectReturn = $MacsetXMLObjectReturn | Where-Object {$_.MacsetName -match $MacSetName}}
     $MacsetXMLObjectReturn 
 }
 
@@ -338,7 +346,10 @@ function Get-vCDNSXService {
     param (
         [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
         #Vdc Organization GUID
-        [string]$OrgVdcGuid
+        [string]$OrgVdcGuid,
+        [Parameter( Mandatory=$false)] 
+        #Service object matches ServiceName
+        [string]$ServiceName
     )
     
     if (!$DefaultvCDNSXonnection) {
@@ -357,6 +368,7 @@ function Get-vCDNSXService {
         }
         $ServiceXMLObjectReturn += $ServicePSObject
     }
+    if ($ServiceName) {$ServiceXMLObjectReturn = $ServiceXMLObjectReturn | Where-Object {$_.ServiceName -match $ServiceName}}
     $ServiceXMLObjectReturn 
 }
 
@@ -365,7 +377,10 @@ function Get-vCDNSXServiceGroup {
     param (
         [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
         #Vdc Organization GUID
-        [string]$OrgVdcGuid
+        [string]$OrgVdcGuid,
+        [Parameter( Mandatory=$false)] 
+        #ServiceGroup object matches ServiceGroupName
+        [string]$ServiceGroupName
     )
     
     if (!$DefaultvCDNSXonnection) {
@@ -384,6 +399,7 @@ function Get-vCDNSXServiceGroup {
         }
         $ServiceGroupXMLObjectReturn += $ServiceGroupPSObject
     }
+    if ($ServiceGroupName) {$ServiceGroupXMLObjectReturn = $ServiceGroupXMLObjectReturn | Where-Object {$_.ServiceGroupName -match $ServiceGroupName}}
     $ServiceGroupXMLObjectReturn 
 }
 
@@ -392,7 +408,10 @@ function Get-vCDNSXSecurityGroup {
     param (
         [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
         #Vdc Organization GUID
-        [string]$OrgVdcGuid
+        [string]$OrgVdcGuid,
+        [Parameter( Mandatory=$false)] 
+        #SecurityGroup object matches SecurityGroupName
+        [string]$SecurityGroupName
     )
     
     if (!$DefaultvCDNSXonnection) {
@@ -411,6 +430,7 @@ function Get-vCDNSXSecurityGroup {
         }
         $SecurityGroupXMLObjectReturn += $SecurityGroupPSObject
     }
+    if ($SecurityGroupName) {$SecurityGroupXMLObjectReturn = $SecurityGroupXMLObjectReturn | Where-Object {$_.SecurityGroupName -match $SecurityGroupName}}
     $SecurityGroupXMLObjectReturn 
 }
 
@@ -419,7 +439,10 @@ function Get-vCDNSXSecurityTag{
     param (
         [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
         #Vdc Organization GUID
-        [string]$OrgVdcGuid
+        [string]$OrgVdcGuid,
+        [Parameter( Mandatory=$false)] 
+        #Securitytag object matches SecuritytagName
+        [string]$SecuritytagName
     )
     
     if (!$DefaultvCDNSXonnection) {
@@ -437,6 +460,8 @@ function Get-vCDNSXSecurityTag{
         }
         $SecuritytagsXMLObjectReturn += $SecuritytagsPSObject
     }
+    if ($SecuritytagName) {$SecuritytagsXMLObjectReturn = $SecuritytagsXMLObjectReturn | Where-Object {$_.SecuritytagName -match $SecuritytagName}}
+
     $SecuritytagsXMLObjectReturn 
 }
 
@@ -573,7 +598,7 @@ function New-vCDNSXSecurityTag {
     if (!$DefaultvCDNSXonnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $SecurityTagObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/securitytags/tag" -body $SecurityTagBody
+        $SecurityTagObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/securitytags/tag/scope/$($OrgVdcGuid)" -body $SecurityTagBody
     }
     if ($SecurityTagObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created SecurityTag Object $($SecurityTagName)"}
     $SecurityTagObjReturn = Get-vCDNSXSecurityTag -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.SecurityTagName -eq $SecurityTagName}
