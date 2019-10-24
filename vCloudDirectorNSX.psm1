@@ -278,12 +278,15 @@ param (
     $vDCReturn 
 }
 
-function Get-vCDNSXOrgVDCVMs {
+function Get-vCDNSXOrgVDCvApp {
 
     param (
         [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
         #Vdc Organization GUID
-        [string]$OrgVdcGuid
+        [string]$OrgVdcGuid,
+        [Parameter( Mandatory=$false)] 
+        #VM/Vapp object matches VmName
+        [string]$vAppName
     )
     
     if (!$DefaultvCDNSXonnection) {
@@ -307,10 +310,60 @@ function Get-vCDNSXOrgVDCVMs {
             OrgVdcvAppVdc = $OrgVdcvAppObject.vdc
         }
         $OrgVdcvAppReturn += $OrgVdcvAppsObjectReturn
-
     }
+    if ($vAppName) {$OrgVdcvAppReturn = $OrgVdcvAppReturn | Where-Object {$_.OrgVdcvAppName -match $vAppName}}
     $OrgVdcvAppReturn
 }
+
+function Get-vCDNSXOrgVDCvAppVM {
+
+    [CmdletBinding(DefaultParameterSetName="OrgVdcvAppHref")]
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false,ParameterSetName="OrgVdcvAppHref")]
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false,ParameterSetName="OrgVdcvAppName")] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid,
+        [Parameter(ValueFromPipelineByPropertyName=$true,Mandatory=$false,ParameterSetName="OrgVdcvAppHref")] 
+        #VM/Vapp object matches VmName
+        [string]$OrgVdcvAppHref,
+        [Parameter( Mandatory=$false,ParameterSetName="OrgVdcvAppName")] 
+        #VM/Vapp object matches VmName
+        [string]$OrgVdcvAppName
+    )
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+    } else {
+        if ($pscmdlet.ParameterSetName -eq "OrgVdcvAppHref") {
+            $Uri = [system.uri]$OrgVdcvAppHref
+            
+            $OrgVdcvAppResponse = Invoke-vCDNSXRestMethod -method get -URI $uri.LocalPath
+            
+        }
+        if ($OrgVdcGuid) {
+            $OrgVdcvAppResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/vApps/query?vdc=$($OrgVdcGuid)"
+        } else {
+            $OrgVdcvAppResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/vApps/query"
+        }
+    }
+
+    $OrgVdcvAppReturn = @()
+    foreach ($OrgVdcvAppObject in $OrgVdcvAppResponse.xml.QueryResultRecords.VAppRecord) {
+
+        $OrgVdcvAppsObjectReturn = [PSCustomObject]@{
+            OrgVdcvAppName = $OrgVdcvAppObject.name
+            OrgVdcvAppOwnerName = $OrgVdcvAppObject.ownerName
+            OrgVdcvAppHref = $OrgVdcvAppObject.href
+            OrgVdcvAppStatus = $OrgVdcvAppObject.status
+            OrgVdcvAppVdc = $OrgVdcvAppObject.vdc
+        }
+        $OrgVdcvAppReturn += $OrgVdcvAppsObjectReturn
+    }
+    if ($vAppName) {$OrgVdcvAppReturn = $OrgVdcvAppReturn | Where-Object {$_.OrgVdcvAppName -match $vAppName}}
+    $OrgVdcvAppReturn
+}
+
 
 function Get-vCDNSXIpset {
 
@@ -364,13 +417,13 @@ function Get-vCDNSXMacset {
     $MacsetXMLObjectReturn = @()
     foreach ($MacsetXMLObject in $MacsetObjResponse.xml.list.macset) {
 
-        $IpSetPSObject = [PSCustomObject]@{
+        $MacSetPSObject = [PSCustomObject]@{
             MacsetName = $MacsetXMLObject.name
             MacsetValue = $MacsetXMLObject.value
             MacsetGuid = $MacsetXMLObject.objectId
             MacsetInheritanceAllowed = $MacsetXMLObject.inheritanceAllowed
         }
-        $MacsetXMLObjectReturn += $IpSetPSObject
+        $MacsetXMLObjectReturn += $MacSetPSObject
     }
     if ($MacSetName) {$MacsetXMLObjectReturn = $MacsetXMLObjectReturn | Where-Object {$_.MacsetName -match $MacSetName}}
     $MacsetXMLObjectReturn 
@@ -639,4 +692,29 @@ function New-vCDNSXSecurityTag {
     $SecurityTagObjReturn = Get-vCDNSXSecurityTag -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.SecurityTagName -eq $SecurityTagName}
     
     $SecurityTagObjReturn
+}
+
+function Add-vCDNSXSecurityGroupMember {
+
+    param (
+        [Parameter (Mandatory=$true)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid,
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        #Name of the SecurityGroup object
+        [string]$SecurityGroupGuid,
+        [Parameter( Mandatory=$false)] 
+        #Vdc Organization GUID
+        [string]$VmObject
+    )
+    
+    if (!$DefaultvCDNSXonnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+    } else {
+        $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/$SecurityGroupGuid" -body $SecurityGroupBody
+    }
+    write-host $SecurityGroupObjResponse
+    $SecurityGroupObjReturn = Get-vCDNSXSecurityGroup -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.SecurityGroupName -eq $SecurityGroupName}
+    
+    $SecurityGroupObjReturn
 }
