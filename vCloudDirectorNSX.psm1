@@ -67,7 +67,7 @@ function Invoke-vCDNSXRestMethod {
 
             #Now we need to assume that DefaultvCDNSXConnection does not exist...
             if (!$DefaultvCDNSXonnection) {
-                throw "Not connected.  Connect to vCloud Director with Connect-vCSNSXAPI first."
+                throw "Not connected.  Connect to vCloud Director with Connect-vCDNSXAPI first."
             }
             else {
                 #Write-host "$($MyInvocation.MyCommand.Name) : Using default connection"
