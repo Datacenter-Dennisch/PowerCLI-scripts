@@ -167,7 +167,10 @@ param (
             #domain/tenantIT
             [string]$TenantID
     )
-    if (!($PSVersionTable.PSVersion.Major -ge 6)) {Write-Error "This module only works with PowerShell version 6 or higher"}
+    if (!($PSVersionTable.PSVersion.Major -ge 6)) {
+        Write-Error "This module only works with PowerShell version 6 or higher"
+        return
+    }
 
     $secpasswd = ConvertTo-SecureString $($cred.GetNetworkCredential().password) -AsPlainText -Force
     if (!$cred.GetNetworkCredential().Domain) {
