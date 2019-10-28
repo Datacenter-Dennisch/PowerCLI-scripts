@@ -367,10 +367,10 @@ function Get-vCDNSXOrgVDCVM {
 function Get-vCDNSXIpset {
 
     param (
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+        [Parameter(Mandatory=$false)] 
         #Vdc Organization GUID
         [string]$OrgVdcGuid,
-        [Parameter( Mandatory=$false)] 
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
         #IPSet object matches IpSetName
         [string]$IpSetName
     )
@@ -400,10 +400,10 @@ function Get-vCDNSXIpset {
 function Get-vCDNSXMacset {
 
     param (
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+        [Parameter(Mandatory=$false)] 
         #Vdc Organization GUID
         [string]$OrgVdcGuid,
-        [Parameter( Mandatory=$false)] 
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
         #MacSet object matches MacSetName
         [string]$MacSetName
     )
@@ -433,10 +433,10 @@ function Get-vCDNSXMacset {
 function Get-vCDNSXService {
 
     param (
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+        [Parameter(Mandatory=$false)] 
         #Vdc Organization GUID
         [string]$OrgVdcGuid,
-        [Parameter( Mandatory=$false)] 
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
         #Service object matches ServiceName
         [string]$ServiceName
     )
@@ -465,10 +465,10 @@ function Get-vCDNSXService {
 function Get-vCDNSXServiceGroup {
 
     param (
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+        [Parameter(Mandatory=$false)] 
         #Vdc Organization GUID
         [string]$OrgVdcGuid,
-        [Parameter( Mandatory=$false)] 
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
         #ServiceGroup object matches ServiceGroupName
         [string]$ServiceGroupName
     )
@@ -497,10 +497,10 @@ function Get-vCDNSXServiceGroup {
 function Get-vCDNSXSecurityGroup {
 
     param (
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+        [Parameter(Mandatory=$false)] 
         #Vdc Organization GUID
         [string]$OrgVdcGuid,
-        [Parameter( Mandatory=$false)] 
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
         #SecurityGroup object matches SecurityGroupName
         [string]$SecurityGroupName
     )
@@ -530,10 +530,10 @@ function Get-vCDNSXSecurityGroup {
 function Get-vCDNSXSecurityTag{
 
     param (
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+        [Parameter(Mandatory=$false)] 
         #Vdc Organization GUID
         [string]$OrgVdcGuid,
-        [Parameter( Mandatory=$false)] 
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
         #Securitytag object matches SecuritytagName
         [string]$SecuritytagName
     )
@@ -570,7 +570,6 @@ function Get-vCDNSXSecurityTagVMs{
     if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $SecuritytagVMObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitytags/tag/$SecuritytagGuid/vm"
     }
 
@@ -586,56 +585,81 @@ function Get-vCDNSXSecurityTagVMs{
     $SecuritytagVmXMLObjectReturn 
 }
 
-
 function New-vCDNSXIpset {
 
     param (
-        [Parameter(Mandatory=$false)] 
-        #Vdc Organization GUID
-        [string]$OrgVdcGuid,
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        [Parameter(ValueFromPipeline=$true, Mandatory=$true)] 
         #Name of the IpSet object
-        [string]$IpSetName,
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        $IpSetName,
+        [Parameter(Mandatory=$false)] 
         #Value of the IpSet object
         [string]$IpSetValue,
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+        [Parameter(Mandatory=$false)] 
+        #ipset description
+        [string]$Description,
+        [Parameter(Mandatory=$false)] 
         #Vdc Organization GUID
-        [string]$Description
+        [string]$OrgVdcGuid
     )
 
-    [string] $IpSetBody = '<ipset><description>’ + $description + ‘</description><name>’ + $IpSetName + ‘</name><value>’ + $IpSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></ipset>'
-    
-    if (!$DefaultvCDNSXconnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
-    } else {
-        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
-        $IpSetObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/ipset/$($OrgVdcGuid)" -body $IpSetBody
+    begin {
+        $IpSetObjReturn = @()
     }
-    if ($IpSetObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created IpSet Object $($IpSetName)"}
-    $IpSetObjReturn = Get-vCDNSXIpset -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.IpSetName -eq $IpSetName}
-    
-    $IpSetObjReturn
+    process {
+        foreach ($IpSetObjName in $IpSetName) {
+            
+            if ($IpSetValue) {
+                [string] $IpSetBody = '<ipset><description>’ + $description + ‘</description><name>’ + $IpSetObjName + ‘</name><value>’ + $IpSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></ipset>'
+            } else {
+                [string] $IpSetBody = '<ipset><description>’ + $description + ‘</description><name>’ + $IpSetObjName + ‘</name><inheritanceAllowed>true</inheritanceAllowed></ipset>'
+            }
+
+            if (!$DefaultvCDNSXconnection) {
+                Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+            } else {
+                $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
+                $IpSetObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/ipset/$($OrgVdcGuid)" -body $IpSetBody
+            }
+            if ($IpSetObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created IpSet Object $($IpSetObjName)"}
+            $IpSetObjReturn += Get-vCDNSXIpset -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.IpSetName -eq $IpSetObjName}
+        }
+    }
+
+    end {
+        $IpSetObjReturn
+    }
 }
 
 function New-vCDNSXMacSet {
 
     param (
-        [Parameter(Mandatory=$false)] 
-        #Vdc Organization GUID
-        [string]$OrgVdcGuid,
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        [Parameter(ValueFromPipeline=$true, Mandatory=$true)] 
         #Name of the MacSet object
         [string]$MacSetName,
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        [Parameter(Mandatory=$false)] 
         #Value of the MacSet object
         [string]$MacSetValue,
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+        [Parameter(Mandatory=$false)] 
         #Vdc Organization GUID
-        [string]$Description
+        [string]$Description,
+        [Parameter(Mandatory=$false)] 
+        #Vdc Organization GUID
+        [string]$OrgVdcGuid
     )
+ 
+    begin {
+        $MacSetObjReturn = @()
+    }
+    process {
+        foreach ($MacSetObjName in $MacSetName) {
+            
+            if ($IpSetValue) {
+                [string] $MacSetBody = '<macset><description>’ + $description + ‘</description><name>’ + $MacSetObjName + ‘</name><value>’ + $MacSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></macset>'
+            } else {
+                [string] $MacSetBody = '<macset><description>’ + $description + ‘</description><name>’ + $MacSetObjName + ‘</name><inheritanceAllowed>true</inheritanceAllowed></macset>'
+            }
+        }
 
-    [string] $MacSetBody = '<macset><description>’ + $description + ‘</description><name>’ + $MacSetName + ‘</name><value>’ + $MacSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></macset>'
     
     if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
@@ -644,68 +668,135 @@ function New-vCDNSXMacSet {
         $MacSetObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/macset/$($OrgVdcGuid)" -body $MacSetBody
     }
     if ($MacSetObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created MacSet Object $($MacSetName)"}
-    $MacSetObjReturn = Get-vCDNSXMacSet -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.MacSetName -eq $MacSetName}
-    
-    $MacSetObjReturn
+    $MacSetObjReturn += Get-vCDNSXMacSet -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.MacSetName -eq $MacSetName}
+    }
+
+    end {
+        $MacSetObjReturn
+    }
+
 }
 
 function New-vCDNSXSecurityGroup {
 
     param (
-        [Parameter(Mandatory=$false)] 
-        #Vdc Organization GUID
-        [string]$OrgVdcGuid,
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        [Parameter(ValueFromPipeline=$true, Mandatory=$true)] 
         #Name of the SecurityGroup object
         [string]$SecurityGroupName,
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+        [Parameter(Mandatory=$false)] 
+        #Description
+        [string]$Description,
+        [Parameter(Mandatory=$false)] 
         #Vdc Organization GUID
-        [string]$Description
+        [string]$OrgVdcGuid
     )
 
-    [string] $SecurityGroupBody = '<securitygroup><description>’ + $description + ‘</description><name>’ + $SecurityGroupName + ‘</name><scope><id>globalroot-0</id><objectTypeName>GlobalRoot</objectTypeName><name>Global</name></scope></securitygroup>'
-    
-    if (!$DefaultvCDNSXconnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
-    } else {
-        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
-        $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/securitygroup/bulk/$($OrgVdcGuid)" -body $SecurityGroupBody
+    begin {
+        $SecurityGroupObjReturn = @()
     }
-    if ($SecurityGroupObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created SecurityGroup Object $($SecurityGroupName)"}
-    $SecurityGroupObjReturn = Get-vCDNSXSecurityGroup -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.SecurityGroupName -eq $SecurityGroupName}
+
+    process {
+
+        foreach ($SecurityGroupObjName in $SecurityGroupName) {
+            [string] $SecurityGroupBody = '<securitygroup><description>’ + $description + ‘</description><name>’ + $SecurityGroupObjName + ‘</name><scope><id>globalroot-0</id><objectTypeName>GlobalRoot</objectTypeName><name>Global</name></scope></securitygroup>'
+        }
+        
+        if (!$DefaultvCDNSXconnection) {
+            Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+        } else {
+            $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
+            $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/securitygroup/bulk/$($OrgVdcGuid)" -body $SecurityGroupBody
+        }
+        if ($SecurityGroupObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created SecurityGroup Object $($SecurityGroupName)"}
+        $SecurityGroupObjReturn += Get-vCDNSXSecurityGroup -SecurityGroupName $SecurityGroupName
+    }
     
-    $SecurityGroupObjReturn
+
+    end {
+        $SecurityGroupObjReturn
+    } 
 }
 
 function New-vCDNSXSecurityTag {
 
     param (
-        [Parameter(Mandatory=$false)] 
-        #Vdc Organization GUID
-        [string]$OrgVdcGuid,
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        [Parameter(ValueFromPipeline=$true, Mandatory=$true)] 
         #Name of the SecurityTag object
         [string]$SecurityTagName,
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$false)] 
+        [Parameter(Mandatory=$false)] 
+        #Description
+        [string]$Description,
+        [Parameter(Mandatory=$false)] 
         #Vdc Organization GUID
-        [string]$Description
+        [string]$OrgVdcGuid
     )
 
-    [string] $SecurityTagBody = '<securityTag><description>’ + $description + ‘</description><name>’ + $SecurityTagName + ‘</name><isUniversal>false</isUniversal><extendedAttributes></extendedAttributes></securityTag>'
-    
-    if (!$DefaultvCDNSXconnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
-    } else {
-        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
-        $SecurityTagObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/securitytags/tag/scope/$($OrgVdcGuid)" -body $SecurityTagBody
+    begin {
+        $SecurityTagObjReturn = @()
     }
-    if ($SecurityTagObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created SecurityTag Object $($SecurityTagName)"}
-    $SecurityTagObjReturn = Get-vCDNSXSecurityTag -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.SecurityTagName -eq $SecurityTagName}
-    
-    $SecurityTagObjReturn
+
+    process {
+
+        foreach ($SecurityTagObjName in $SecurityTagName) {
+            [string] $SecurityTagBody = '<securityTag><description>’ + $description + ‘</description><name>’ + $SecurityTagObjName + ‘</name><isUniversal>false</isUniversal><extendedAttributes></extendedAttributes></securityTag>'
+        }
+
+        if (!$DefaultvCDNSXconnection) {
+            Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+        } else {
+            $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
+            $SecurityTagObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/securitytags/tag/scope/$($OrgVdcGuid)" -body $SecurityTagBody
+        }
+        if ($SecurityTagObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created SecurityTag Object $($SecurityTagName)"}
+        $SecurityTagObjReturn += Get-vCDNSXSecurityTag -OrgVdcGuid $OrgVdcGuid | Where-Object {$_.SecurityTagName -eq $SecurityTagName}
+    }
+
+    end {    
+        $SecurityTagObjReturn
+    }
 }
 
 function Add-vCDNSXSecurityGroupMember {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true,ParameterSetName="VcdObject")] 
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true,ParameterSetName="VmObject")]
+        #Name of the SecurityGroup object
+        [string]$SecurityGroupGuid,
+        [Parameter(mandatory=$false,ParameterSetName="VcdObject")] 
+        #Vdc Organization GUID
+        [string]$VcdId,
+        [Parameter(Mandatory=$false,ParameterSetName="VmObject")] 
+        #OrgVDC VM Name
+        [string]$VmName 
+    )
+    if ($pscmdlet.ParameterSetName -eq "VmObject") {
+        $VcdId = (Get-vCDNSXOrgVDCVM -VMName $VmName).VmVcdId
+    }
+    if (!$DefaultvCDNSXconnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+    } else {
+        $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method put -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($VcdId)"
+        if ($SecurityGroupObjResponse.Headers) {
+            $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/$($SecurityGroupGuid)"
+        }
+    }
+
+    $SecurityGroupObjReturn = @()
+    foreach ($SecurityGroupXMLObject in $SecurityGroupObjResponse.xml.securitygroup) {
+
+        $SecurityGroupPSObject = [PSCustomObject]@{
+            SecurityGroupName = $SecurityGroupXMLObject.name
+            SecurityGroupMember = $SecurityGroupXMLObject.member
+            SecurityGroupExcludeMember = $SecurityGroupXMLObject.excludeMember
+            SecurityGroupGuid = $SecurityGroupXMLObject.objectId
+        }
+        $SecurityGroupObjReturn += $SecurityGroupPSObject
+    }    
+    $SecurityGroupObjReturn
+}
+
+function Add-vCDNSXSecurityGroupMembers {
 
     param (
         [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true,ParameterSetName="VcdObject")] 
