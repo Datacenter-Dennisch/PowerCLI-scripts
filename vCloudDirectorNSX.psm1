@@ -63,12 +63,12 @@ function Invoke-vCDNSXRestMethod {
         if (!$connection) {
 
             #Now we need to assume that DefaultvCDNSXConnection does not exist...
-            if (!$DefaultvCDNSXonnection) {
+            if (!$DefaultvCDNSXconnection) {
                 throw "Not connected.  Connect to vCloud Director with Connect-vCDNSXAPI first."
             }
             else {
                 #Write-host "$($MyInvocation.MyCommand.Name) : Using default connection"
-                $connection = $DefaultvCDNSXonnection
+                $connection = $DefaultvCDNSXconnection
             }
         }
         $headerDictionary = @{}
@@ -215,7 +215,7 @@ param (
             BearerAccessToken = $response.Headers.'X-VMWARE-VCLOUD-ACCESS-TOKEN'
             Headers = $headers
         }
-        Set-Variable -Name DefaultvCDNSXonnection -value $ConnectionObj -scope Global
+        Set-Variable -Name DefaultvCDNSXconnection -value $ConnectionObj -scope Global
         $OrgVcdGuid = (Get-vCDNSXOrg | Get-vCDNSXOrgVDC).OrgVdcGuid
         $ConnectionObj = [PSCustomObject]@{
             Server = $Server
@@ -224,9 +224,9 @@ param (
             Authentication = "Bearer"
             BearerAccessToken = $response.Headers.'X-VMWARE-VCLOUD-ACCESS-TOKEN'
             Headers = $headers
-            OrgVcdGuid = $OrgVcdGuid
+            OrgVdcGuid = $OrgVcdGuid
         }
-        Set-Variable -Name DefaultvCDNSXonnection -value $ConnectionObj -scope Global
+        Set-Variable -Name DefaultvCDNSXconnection -value $ConnectionObj -scope Global
         
     } else {
         Write-Error "Username or Password incorrect"
@@ -236,13 +236,13 @@ param (
 
 function Disconnect-vCDNSXAPI {
 
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server"
     } else {
-        write-host -ForegroundColor Yellow "Connected to (default) vCloud Director server at: $($DefaultvCDNSXonnection.server)"
+        write-host -ForegroundColor Yellow "Connected to (default) vCloud Director server at: $($DefaultvCDNSXconnection.server)"
         $answer = read-host "Are you sure you want to disconnect (y/n)?"
         if ($answer.ToLower() -eq "y") {
-            Set-Variable -Name DefaultvCDNSXonnection -value $null -scope Global
+            Set-Variable -Name DefaultvCDNSXconnection -value $null -scope Global
             write-host "Succesfully disconnected!"
         }
     }
@@ -250,14 +250,14 @@ function Disconnect-vCDNSXAPI {
 
 function Get-vCDNSXOrg {
 
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $OrgResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/org"
         $OrgGuid = $OrgResponse.xml.OrgList.org.href.substring($OrgResponse.xml.OrgList.org.href.LastIndexOf('/')+1)
         $OrgName = ($OrgResponse.xml).OrgList.Org.name
         $OrgHref = $OrgResponse.xml.OrgList.org.href
-        $OrgAPI = $OrgResponse.xml.OrgList.org.href.Substring(($OrgResponse.xml.OrgList.org.href.IndexOf($DefaultvCDNSXonnection.server)+($DefaultvCDNSXonnection.server).Length))
+        $OrgAPI = $OrgResponse.xml.OrgList.org.href.Substring(($OrgResponse.xml.OrgList.org.href.IndexOf($DefaultvCDNSXconnection.server)+($DefaultvCDNSXconnection.server).Length))
     }
     $OrgResponse = [PSCustomObject]@{
         OrgName = $OrgName
@@ -276,7 +276,7 @@ param (
     [string]$OrgGuid
 )
 
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $VdcResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/admin/org/$($OrgGuid)"
@@ -301,10 +301,10 @@ function Get-vCDNSXOrgVDCvApp {
         [string]$vAppName
     )
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         if ($OrgVdcGuid) {
             $OrgVdcvAppResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/vApps/query?vdc=$($OrgVdcGuid)"
         } else {
@@ -339,10 +339,10 @@ function Get-vCDNSXOrgVDCVM {
         [string]$VMName
     )
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $OrgVdcVMResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/query?type=vm&filter=vdc==https://vcd01.z01.hypergrid.nl/api/vdc/$($OrgVdcGuid)"
     }
 
@@ -375,10 +375,10 @@ function Get-vCDNSXIpset {
         [string]$IpSetName
     )
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $IpSetObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/ipset/scope/$($OrgVdcGuid)"
     }
 
@@ -408,10 +408,10 @@ function Get-vCDNSXMacset {
         [string]$MacSetName
     )
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $MacsetObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/macset/scope/$($OrgVdcGuid)"
     }
 
@@ -441,10 +441,10 @@ function Get-vCDNSXService {
         [string]$ServiceName
     )
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $ServiceObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/application/scope/$($OrgVdcGuid)"
     }
 
@@ -473,10 +473,10 @@ function Get-vCDNSXServiceGroup {
         [string]$ServiceGroupName
     )
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $ServiceGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/applicationgroup/scope/$($OrgVdcGuid)"
     }
 
@@ -505,10 +505,10 @@ function Get-vCDNSXSecurityGroup {
         [string]$SecurityGroupName
     )
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/scope/$($OrgVdcGuid)"
     }
 
@@ -518,6 +518,7 @@ function Get-vCDNSXSecurityGroup {
         $SecurityGroupPSObject = [PSCustomObject]@{
             SecurityGroupName = $SecurityGroupXMLObject.name
             SecurityGroupMember = $SecurityGroupXMLObject.member
+            SecurityGroupExcludeMember = $SecurityGroupXMLObject.ExcludeMember
             SecurityGroupGuid = $SecurityGroupXMLObject.objectId
         }
         $SecurityGroupXMLObjectReturn += $SecurityGroupPSObject
@@ -537,10 +538,10 @@ function Get-vCDNSXSecurityTag{
         [string]$SecuritytagName
     )
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $SecuritytagObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitytags/tag/scope/$($OrgVdcGuid)"
     }
 
@@ -566,10 +567,10 @@ function Get-vCDNSXSecurityTagVMs{
         [string]$SecuritytagGuid
     )
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $SecuritytagVMObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitytags/tag/$SecuritytagGuid/vm"
     }
 
@@ -605,10 +606,10 @@ function New-vCDNSXIpset {
 
     [string] $IpSetBody = '<ipset><description>’ + $description + ‘</description><name>’ + $IpSetName + ‘</name><value>’ + $IpSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></ipset>'
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $IpSetObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/ipset/$($OrgVdcGuid)" -body $IpSetBody
     }
     if ($IpSetObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created IpSet Object $($IpSetName)"}
@@ -636,10 +637,10 @@ function New-vCDNSXMacSet {
 
     [string] $MacSetBody = '<macset><description>’ + $description + ‘</description><name>’ + $MacSetName + ‘</name><value>’ + $MacSetValue + ‘</value><inheritanceAllowed>true</inheritanceAllowed></macset>'
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $MacSetObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/macset/$($OrgVdcGuid)" -body $MacSetBody
     }
     if ($MacSetObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created MacSet Object $($MacSetName)"}
@@ -664,10 +665,10 @@ function New-vCDNSXSecurityGroup {
 
     [string] $SecurityGroupBody = '<securitygroup><description>’ + $description + ‘</description><name>’ + $SecurityGroupName + ‘</name><scope><id>globalroot-0</id><objectTypeName>GlobalRoot</objectTypeName><name>Global</name></scope></securitygroup>'
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/securitygroup/bulk/$($OrgVdcGuid)" -body $SecurityGroupBody
     }
     if ($SecurityGroupObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created SecurityGroup Object $($SecurityGroupName)"}
@@ -692,10 +693,10 @@ function New-vCDNSXSecurityTag {
 
     [string] $SecurityTagBody = '<securityTag><description>’ + $description + ‘</description><name>’ + $SecurityTagName + ‘</name><isUniversal>false</isUniversal><extendedAttributes></extendedAttributes></securityTag>'
     
-    if (!$DefaultvCDNSXonnection) {
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        $OrgVdcGuid = $DefaultvCDNSXonnection.OrgVdcGuid
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
         $SecurityTagObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/services/securitytags/tag/scope/$($OrgVdcGuid)" -body $SecurityTagBody
     }
     if ($SecurityTagObjResponse.Headers) {Write-host -ForegroundColor Yellow "Successfully created SecurityTag Object $($SecurityTagName)"}
@@ -707,15 +708,21 @@ function New-vCDNSXSecurityTag {
 function Add-vCDNSXSecurityGroupMember {
 
     param (
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true,ParameterSetName="VcdObject")] 
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true,ParameterSetName="VmObject")]
         #Name of the SecurityGroup object
         [string]$SecurityGroupGuid,
-        [Parameter( Mandatory=$false)] 
+        [Parameter(mandatory=$false,ParameterSetName="VcdObject")] 
         #Vdc Organization GUID
-        [string]$VcdId
+        [string]$VcdId,
+        [Parameter(Mandatory=$false,ParameterSetName="VmObject")] 
+        #OrgVDC VM Name
+        [string]$VmName 
     )
-    
-    if (!$DefaultvCDNSXonnection) {
+    if ($pscmdlet.ParameterSetName -eq "VmObject") {
+        $VcdId = (Get-vCDNSXOrgVDCVM -VMName $VmName).VmVcdId
+    }
+    if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method put -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($VcdId)"
@@ -730,6 +737,7 @@ function Add-vCDNSXSecurityGroupMember {
         $SecurityGroupPSObject = [PSCustomObject]@{
             SecurityGroupName = $SecurityGroupXMLObject.name
             SecurityGroupMember = $SecurityGroupXMLObject.member
+            SecurityGroupExcludeMember = $SecurityGroupXMLObject.excludeMember
             SecurityGroupGuid = $SecurityGroupXMLObject.objectId
         }
         $SecurityGroupObjReturn += $SecurityGroupPSObject
