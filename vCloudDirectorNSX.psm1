@@ -756,78 +756,104 @@ function New-vCDNSXSecurityTag {
     }
 }
 
-function Add-vCDNSXSecurityGroupMember {
+function Add-vCDNSXSecurityGroupStaticMembers {
 
     param (
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true,ParameterSetName="VcdObject")] 
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true,ParameterSetName="VmObject")]
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)]
         #Name of the SecurityGroup object
         [string]$SecurityGroupGuid,
-        [Parameter(mandatory=$false,ParameterSetName="VcdObject")] 
-        #Vdc Organization GUID
-        [string]$VcdId,
-        [Parameter(Mandatory=$false,ParameterSetName="VmObject")] 
-        #OrgVDC VM Name
-        [string]$VmName 
-    )
-    if ($pscmdlet.ParameterSetName -eq "VmObject") {
-        $VcdId = (Get-vCDNSXOrgVDCVM -VMName $VmName).VmVcdId
-    }
-    if (!$DefaultvCDNSXconnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
-    } else {
-        $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method put -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($VcdId)"
-        if ($SecurityGroupObjResponse.Headers) {
-            $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/$($SecurityGroupGuid)"
-        }
-    }
-
-    $SecurityGroupObjReturn = @()
-    foreach ($SecurityGroupXMLObject in $SecurityGroupObjResponse.xml.securitygroup) {
-
-        $SecurityGroupPSObject = [PSCustomObject]@{
-            SecurityGroupName = $SecurityGroupXMLObject.name
-            SecurityGroupMember = $SecurityGroupXMLObject.member
-            SecurityGroupExcludeMember = $SecurityGroupXMLObject.excludeMember
-            SecurityGroupGuid = $SecurityGroupXMLObject.objectId
-        }
-        $SecurityGroupObjReturn += $SecurityGroupPSObject
-    }    
-    $SecurityGroupObjReturn
-}
-
-function Add-vCDNSXSecurityGroupMembers {
-
-    param (
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true,ParameterSetName="VcdObject")] 
-        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true,ParameterSetName="VmObject")]
-        #Name of the SecurityGroup object
-        [string]$SecurityGroupGuid,
-        [Parameter(mandatory=$false,ParameterSetName="VcdObject")] 
-        #Vdc Organization GUID
-        [string]$VcdId,
-        [Parameter(Mandatory=$false,ParameterSetName="VmObject")] 
-        #OrgVDC VM Name
-        [string]$VmName 
+        [Parameter(Mandatory=$false)] 
+        #include vCD VM object
+        [array]$IncludeVMobject,
+        [Parameter(Mandatory=$false)] 
+        #include vCD IpSet object
+        [array]$IncludeIpSetobject,
+        [Parameter(Mandatory=$false)] 
+        #include vCD MacSet object
+        [array]$IncludeMacSetobject,
+        [Parameter(Mandatory=$false)] 
+        #include vCD MacSet object
+        [array]$IncludeSecurityTagobject,
+        [Parameter(Mandatory=$false)] 
+        #exclude vCD VM object
+        [array]$ExcludeVMobject,
+        [Parameter(Mandatory=$false)] 
+        #exclude vCD IpSet object
+        [array]$ExcludeIpSetobject,
+        [Parameter(Mandatory=$false)] 
+        #exclude vCD VM object
+        [array]$ExcludeMacSetobject,
+        [Parameter(Mandatory=$false)] 
+        #exclude vCD VM object
+        [array]$ExcludeSecurityTagobject
     )
 
     begin {$OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid}
 
     process {
-        if ($pscmdlet.ParameterSetName -eq "VmObject") {
-            $VcdId = (Get-vCDNSXOrgVDCVM -VMName $VmName).VmVcdId
+        #create body base section
+        $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/scope/$($OrgVdcGuid)"
+        $SecGroupInfo = $SecurityGroupObjResponse.xml.list.securitygroup | Where-Object {$_.objectId -eq $SecurityGroupGuid}
+        [string] $body = "<securitygroup><objectId>$($SecGroupInfo.objectId)</objectId><objectTypeName>$($SecGroupInfo.objectTypeName)</objectTypeName><vsmUuid>$($SecGroupInfo.vsmUuid)</vsmUuid><type><typeName>$($SecGroupInfo.type.typeName)</typeName></type><name>$($SecGroupInfo.name)</name><scope><id>$($SecGroupInfo.scope.id)</id><objectTypeName>$($SecGroupInfo.scope.objectTypeName)</objectTypeName><name>$($SecGroupInfo.scope.name)</name></scope><clientHandle></clientHandle><extendedAttributes></extendedAttributes>"  
+        
+        #create body member section
+        if ($IncludeVMobject) {
+            foreach ($VMobject in $IncludeVMobject) {
+                [string]$body += "<member><objectId>$($VMobject.VmVcdId)</objectId><type><typeName>VirtualMachine</typeName></type><name>$($VMobject.VmName)</name><clientHandle></clientHandle></member>"
+            }
         }
+
+        if ($IncludeIpSetobject) {
+            foreach ($IpSetobject in $IncludeIpSetobject) {
+                [string]$body += "<member><objectId>$($IpSetobject.IpSetGuid)</objectId><type><typeName>IPSet</typeName></type><name>$($IpSetobject.IpSetName)</name><clientHandle></clientHandle></member>"
+            }
+        }
+
+        if ($IncludeMacSetobject) {
+            foreach ($MacSetobject in $IncludeMacSetobject) {
+                [string]$body += "<member><objectId>$($MacSetobject.MacsetGuid)</objectId><type><typeName>MACSet</typeName></type><name>$($MacSetobject.MacsetName)</name><clientHandle></clientHandle></member>"
+            }
+        }
+
+        if ($IncludeSecurityTagobject) {
+            foreach ($SecurityTagobject in $IncludeSecurityTagobject) {
+                [string]$body += "<member><objectId>$($SecurityTagobject.SecuritytagGuid)</objectId><type><typeName>SecurityTag</typeName></type><name>$($SecurityTagobject.SecuritytagName)</name><clientHandle></clientHandle></member>"
+            }
+        }
+
+
+        if ($ExcludeVMobject) {
+            foreach ($VMobject in $ExcludeVMobject) {
+                [string]$body += "<excludeMember><objectId>$($VMobject.VmVcdId)</objectId><type><typeName>VirtualMachine</typeName></type><name>$($VMobject.VmName)</name><clientHandle></clientHandle></excludeMember>"
+            }
+        }
+
+        if ($ExcludeIpSetobject) {
+            foreach ($IpSetobject in $ExcludeIpSetobject) {
+                [string]$body += "<excludeMember><objectId>$($IpSetobject.IpSetGuid)</objectId><type><typeName>IPSet</typeName></type><name>$($IpSetobject.IpSetName)</name><clientHandle></clientHandle></excludeMember>"
+            }
+        }
+
+        if ($ExcludeMacSetobject) {
+            foreach ($MacSetobject in $ExcludeMacSetobject) {
+                [string]$body += "<excludeMember><objectId>$($MacSetobject.MacsetGuid)</objectId><type><typeName>MACSet</typeName></type><name>$($MacSetobject.MacsetName)</name><clientHandle></clientHandle></excludeMember>"
+            }
+        }
+
+        if ($ExcludeSecurityTagobject) {
+            foreach ($SecurityTagobject in $ExcludeSecurityTagobject) {
+                [string]$body += "<excludeMember><objectId>$($SecurityTagobject.SecuritytagGuid)</objectId><type><typeName>SecurityTag</typeName></type><name>$($SecurityTagobject.SecuritytagName)</name><clientHandle></clientHandle></excludeMember>"
+            }
+        }
+
+        #complete body
+        [string]$body += "</securitygroup>"
 
         if (!$DefaultvCDNSXconnection) {
             Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
         } else {
-            $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/scope/$($OrgVdcGuid)"
-            $SecGroupInfo = $SecurityGroupObjResponse.xml.list.securitygroup
-            [string] $body = "<objectId>$($SecGroupInfo.objectId)</objectId><vsmUuid>$($SecGroupInfo.vsmUuid)</vsmUuid>"
-            $body = "<member><objectId>urn:vcloud:vm:f55d3bb2-ed4f-457b-ab85-1df281b10616</objectId><type><typeName>VirtualMachine</typeName></type><isUniversal>false</isUniversal></member>"
-
-            
-
+         
+            write-host $body
             $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method put -URI "/network/services/securitygroup/bulk/$($SecurityGroupGuid)" -body $body
             if ($SecurityGroupObjResponse.Headers) {
                 $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/$($SecurityGroupGuid)"
