@@ -821,7 +821,6 @@ function Add-vCDNSXSecurityGroupStaticMembers {
             }
         }
 
-
         if ($ExcludeVMobject) {
             foreach ($VMobject in $ExcludeVMobject) {
                 [string]$body += "<excludeMember><objectId>$($VMobject.VmVcdId)</objectId><type><typeName>VirtualMachine</typeName></type><name>$($VMobject.VmName)</name><clientHandle></clientHandle></excludeMember>"
@@ -874,4 +873,67 @@ function Add-vCDNSXSecurityGroupStaticMembers {
     }
 
     end {$SecurityGroupObjReturn}
+}
+
+function Remove-vCDNSXSecurityGroupStaticMember {
+
+    param (
+        [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)]
+        #Name of the SecurityGroup object
+        [string]$SecurityGroupGuid,
+        [Parameter(Mandatory=$false)] 
+        #include vCD VM object
+        [array]$IncludeVMobject,
+        [Parameter(Mandatory=$false)] 
+        #include vCD IpSet object
+        [array]$IncludeIpSetobject,
+        [Parameter(Mandatory=$false)] 
+        #include vCD MacSet object
+        [array]$IncludeMacSetobject,
+        [Parameter(Mandatory=$false)] 
+        #include vCD MacSet object
+        [array]$IncludeSecurityTagobject,
+        [Parameter(Mandatory=$false)] 
+        #exclude vCD VM object
+        [array]$ExcludeVMobject,
+        [Parameter(Mandatory=$false)] 
+        #exclude vCD IpSet object
+        [array]$ExcludeIpSetobject,
+        [Parameter(Mandatory=$false)] 
+        #exclude vCD VM object
+        [array]$ExcludeMacSetobject,
+        [Parameter(Mandatory=$false)] 
+        #exclude vCD VM object
+        [array]$ExcludeSecurityTagobject
+    )
+    
+    if (!$DefaultvCDNSXconnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+    } else {
+        if ($IncludeVMobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($IncludeVMobject.VmVcdId)"}
+        if ($IncludeIpSetobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($IncludeIpSetobject.IpSetGuid)"}
+        if ($IncludeMacSetobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($IncludeMacSetobject.MacsetGuid)"}
+        if ($IncludeSecurityTagobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($IncludeSecurityTagobject.SecuritytagGuid)"}
+        if ($ExcludeVMobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($ExcludeVMobject.VmVcdId)"}
+        if ($ExcludeIpSetobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($ExcludeIpSetobject.IpSetGuid)"}
+        if ($ExcludeMacSetobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($ExcludeMacSetobject.MacsetGuid)"}
+        if ($ExcludeSecurityTagobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($ExcludeSecurityTagobject.SecuritytagGuid)"}
+    }
+
+    if ($SecurityGroupObjResponse.Headers) {
+        $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/$($SecurityGroupGuid)"
+        $SecurityGroupXMLObjectReturn = @()
+        foreach ($SecurityGroupXMLObject in $SecurityGroupObjResponse.xml.securitygroup) {
+
+            $SecurityGroupPSObject = [PSCustomObject]@{
+                SecurityGroupName = $SecurityGroupXMLObject.name
+                SecurityGroupMember = $SecurityGroupXMLObject.member
+                SecurityGroupExcludeMember = $SecurityGroupXMLObject.ExcludeMember
+                SecurityGroupGuid = $SecurityGroupXMLObject.objectId
+            }
+            $SecurityGroupXMLObjectReturn += $SecurityGroupPSObject
+        }
+    }
+    if ($SecurityGroupName) {$SecurityGroupXMLObjectReturn = $SecurityGroupXMLObjectReturn | Where-Object {$_.SecurityGroupName -match $SecurityGroupName}}
+    $SecurityGroupXMLObjectReturn 
 }
