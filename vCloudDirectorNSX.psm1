@@ -810,28 +810,42 @@ function Add-vCDNSXSecurityGroupMembers {
         #OrgVDC VM Name
         [string]$VmName 
     )
-    if ($pscmdlet.ParameterSetName -eq "VmObject") {
-        $VcdId = (Get-vCDNSXOrgVDCVM -VMName $VmName).VmVcdId
-    }
-    if (!$DefaultvCDNSXconnection) {
-        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
-    } else {
-        $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method put -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($VcdId)"
-        if ($SecurityGroupObjResponse.Headers) {
-            $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/$($SecurityGroupGuid)"
+
+    begin {$OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid}
+
+    process {
+        if ($pscmdlet.ParameterSetName -eq "VmObject") {
+            $VcdId = (Get-vCDNSXOrgVDCVM -VMName $VmName).VmVcdId
         }
+
+        if (!$DefaultvCDNSXconnection) {
+            Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+        } else {
+            $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/scope/$($OrgVdcGuid)"
+            $SecGroupInfo = $SecurityGroupObjResponse.xml.list.securitygroup
+            [string] $body = "<objectId>$($SecGroupInfo.objectId)</objectId><vsmUuid>$($SecGroupInfo.vsmUuid)</vsmUuid>"
+            $body = "<member><objectId>urn:vcloud:vm:f55d3bb2-ed4f-457b-ab85-1df281b10616</objectId><type><typeName>VirtualMachine</typeName></type><isUniversal>false</isUniversal></member>"
+
+            
+
+            $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method put -URI "/network/services/securitygroup/bulk/$($SecurityGroupGuid)" -body $body
+            if ($SecurityGroupObjResponse.Headers) {
+                $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/$($SecurityGroupGuid)"
+            }
+        }
+
+        $SecurityGroupObjReturn = @()
+        foreach ($SecurityGroupXMLObject in $SecurityGroupObjResponse.xml.securitygroup) {
+
+            $SecurityGroupPSObject = [PSCustomObject]@{
+                SecurityGroupName = $SecurityGroupXMLObject.name
+                SecurityGroupMember = $SecurityGroupXMLObject.member
+                SecurityGroupExcludeMember = $SecurityGroupXMLObject.excludeMember
+                SecurityGroupGuid = $SecurityGroupXMLObject.objectId
+            }
+            $SecurityGroupObjReturn += $SecurityGroupPSObject
+        }    
     }
 
-    $SecurityGroupObjReturn = @()
-    foreach ($SecurityGroupXMLObject in $SecurityGroupObjResponse.xml.securitygroup) {
-
-        $SecurityGroupPSObject = [PSCustomObject]@{
-            SecurityGroupName = $SecurityGroupXMLObject.name
-            SecurityGroupMember = $SecurityGroupXMLObject.member
-            SecurityGroupExcludeMember = $SecurityGroupXMLObject.excludeMember
-            SecurityGroupGuid = $SecurityGroupXMLObject.objectId
-        }
-        $SecurityGroupObjReturn += $SecurityGroupPSObject
-    }    
-    $SecurityGroupObjReturn
+    end {$SecurityGroupObjReturn}
 }
