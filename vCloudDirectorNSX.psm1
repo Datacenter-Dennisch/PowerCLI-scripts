@@ -892,32 +892,32 @@ function Remove-vCDNSXSecurityGroupStaticMember {
         [array]$IncludeMacSetobject,
         [Parameter(Mandatory=$false)] 
         #include vCD MacSet object
-        [array]$IncludeSecurityTagobject,
-        [Parameter(Mandatory=$false)] 
+        [array]$IncludeSecurityTagobject #,
+        #[Parameter(Mandatory=$false)] 
         #exclude vCD VM object
-        [array]$ExcludeVMobject,
-        [Parameter(Mandatory=$false)] 
+        #[array]$ExcludeVMobject,
+        #[Parameter(Mandatory=$false)] 
         #exclude vCD IpSet object
-        [array]$ExcludeIpSetobject,
-        [Parameter(Mandatory=$false)] 
+        #[array]$ExcludeIpSetobject,
+        #[Parameter(Mandatory=$false)] 
         #exclude vCD VM object
-        [array]$ExcludeMacSetobject,
-        [Parameter(Mandatory=$false)] 
+        #[array]$ExcludeMacSetobject,
+        #[Parameter(Mandatory=$false)] 
         #exclude vCD VM object
-        [array]$ExcludeSecurityTagobject
+        #[array]$ExcludeSecurityTagobject
     )
     
     if (!$DefaultvCDNSXconnection) {
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
-        if ($IncludeVMobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($IncludeVMobject.VmVcdId)"}
-        if ($IncludeIpSetobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($IncludeIpSetobject.IpSetGuid)"}
-        if ($IncludeMacSetobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($IncludeMacSetobject.MacsetGuid)"}
-        if ($IncludeSecurityTagobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($IncludeSecurityTagobject.SecuritytagGuid)"}
-        if ($ExcludeVMobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($ExcludeVMobject.VmVcdId)"}
-        if ($ExcludeIpSetobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($ExcludeIpSetobject.IpSetGuid)"}
-        if ($ExcludeMacSetobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($ExcludeMacSetobject.MacsetGuid)"}
-        if ($ExcludeSecurityTagobject) {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($ExcludeSecurityTagobject.SecuritytagGuid)"}
+        if ($IncludeVMobject) {$IncludeVMobject | ForEach-Object {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($_.VmVcdId)"}}
+        if ($IncludeIpSetobject) {$IncludeIpSetobject | ForEach-Object {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($_.IpSetGuid)"}}
+        if ($IncludeMacSetobject) {$IncludeMacSetobject | foreach-object {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($_.MacsetGuid)"}}
+        if ($IncludeSecurityTagobject) {$IncludeSecurityTagobject | ForEach-Object {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/members/$($_.SecuritytagGuid)"}}
+        #if ($ExcludeVMobject) {$ExcludeVMobject| ForEach-Object {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($_.VmVcdId)"}}
+        #if ($ExcludeIpSetobject) {$ExcludeIpSetobject| ForEach-Object {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($_.IpSetGuid)"}}
+        #if ($ExcludeMacSetobject) {$ExcludeMacSetobject| ForEach-Object {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($_.MacsetGuid)"}}
+        #if ($ExcludeSecurityTagobject) {$ExcludeSecurityTagobject| ForEach-Object {$SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method del -URI "/network/services/securitygroup/$($SecurityGroupGuid)/excludeMember/$($_.SecuritytagGuid)"}}
     }
 
     if ($SecurityGroupObjResponse.Headers) {
