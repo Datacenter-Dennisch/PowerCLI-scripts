@@ -585,6 +585,70 @@ function Get-vCDNSXSecurityTagVMs{
     $SecuritytagVmXMLObjectReturn 
 }
 
+function Get-vCDNSXDistributedFirewallRule{
+
+    param (
+        [Parameter(Mandatory=$false, parametersetname="DFWruleName")] 
+        #firewall rule name
+        [string]$DFWruleName,
+        [Parameter(Mandatory=$false, parametersetname="DFWruleId")] 
+        #firewall rule name
+        [string]$DFWruleId
+    )
+
+    $DFWReturn = @()
+
+    if (!$DefaultvCDNSXconnection) {
+        Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+    } else {
+        $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
+        if ($pscmdlet.ParameterSetName -eq "DFWruleId") {
+            $DFWResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/firewall/globalroot-0/config/layer3sections/$($OrgVdcGuid)/rules/$($DFWruleId)"
+            $DFWruleXMLobject = $DFWResponse.xml.rule
+            $DFWrulePSObject = [PSCustomObject]@{
+                DFWruleID = $DFWruleXMLobject.id
+                DFWruleName = $DFWruleXMLobject.name
+                DFWruleLogged = $DFWruleXMLobject.logged
+                DFWruleAction = $DFWruleXMLobject.action
+                DFWruleAppliedToList = $DFWruleXMLobject.appliedToList
+                DFWruleDirection = $DFWruleXMLobject.direction
+                DFWrulePacketType = $DFWruleXMLobject.packetType
+                DFWruleSourceNegate = $DFWruleXMLobject.sources.excluded
+                DFWruleSourceMember = $DFWruleXMLobject.sources.source
+                DFWruleDestinationNegate = $DFWruleXMLobject.destinations.excluded
+                DFWruleDestinationMember = $DFWruleXMLobject.destinations.destination
+                DFWruleServices = $DFWruleXMLobject.services.service
+            }
+            $DFWReturn += $DFWrulePSObject
+        } else {
+            $DFWResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/firewall/globalroot-0/config?vdc=$($OrgVdcGuid)"
+            foreach ($DFWruleXMLobject in $DFWResponse.xml.firewallConfiguration.layer3Sections.section.rule) {
+                $DFWrulePSObject = [PSCustomObject]@{
+                    DFWruleID = $DFWruleXMLobject.id
+                    DFWruleName = $DFWruleXMLobject.name
+                    DFWruleLogged = $DFWruleXMLobject.logged
+                    DFWruleAction = $DFWruleXMLobject.action
+                    DFWruleAppliedToList = $DFWruleXMLobject.appliedToList
+                    DFWruleDirection = $DFWruleXMLobject.direction
+                    DFWrulePacketType = $DFWruleXMLobject.packetType
+                    DFWruleSourceNegate = $DFWruleXMLobject.sources.excluded
+                    DFWruleSourceMember = $DFWruleXMLobject.sources.source
+                    DFWruleDestinationNegate = $DFWruleXMLobject.destinations.excluded
+                    DFWruleDestinationMember = $DFWruleXMLobject.destinations.destination
+                    DFWruleServices = $DFWruleXMLobject.services.service
+                }
+                $DFWReturn += $DFWrulePSObject
+            }
+            if ($DFWruleName) {$DFWReturn = $DFWReturn | Where-Object {$_.DFWruleName -match $DFWruleName}}
+        }
+    }
+
+    
+    
+    
+    $DFWReturn 
+}
+
 function New-vCDNSXIpset {
 
     param (
