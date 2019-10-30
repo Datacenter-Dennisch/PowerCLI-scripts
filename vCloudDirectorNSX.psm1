@@ -186,7 +186,7 @@ param (
 
     
     try {
-        $response = Invoke-vCDNSXRestMethod -server $Server -port $port -protocol $Protocol -cred $vCDcredential -method post -URI "/api/sessions" -vCDversion v9.5
+        $response = Invoke-vCDNSXRestMethod -server $Server -port $port -protocol $Protocol -cred $vCDcredential -method post -URI "/api/sessions" -vCDversion v9.7
     }
     catch {
 
@@ -273,7 +273,10 @@ function Get-vCDNSXOrgVDC {
 param (
     [Parameter(ValueFromPipelineByPropertyName=$true, Mandatory=$true)] 
     #Vdc Organization GUID
-    [string]$OrgGuid
+    [string]$OrgGuid,
+    [Parameter( Mandatory=$false)] 
+    #Vdc Organization GUID
+    [string]$OrgVdcGuid
 )
 
     if (!$DefaultvCDNSXconnection) {
@@ -287,6 +290,8 @@ param (
         OrgVdcHref = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.href
         OrgVdcGuid = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.id.split(":")[3]
     }
+    if ($OrgVdcGuid) {$vDCReturn = $vDCReturn | Where-Object {$_.OrgVdcGuid -eq $OrgVdcGuid}}
+
     $vDCReturn 
 }
 
@@ -1000,4 +1005,151 @@ function Remove-vCDNSXSecurityGroupStaticMember {
     }
     if ($SecurityGroupName) {$SecurityGroupXMLObjectReturn = $SecurityGroupXMLObjectReturn | Where-Object {$_.SecurityGroupName -match $SecurityGroupName}}
     $SecurityGroupXMLObjectReturn 
+}
+
+function Add-vCDNSXDistributedFirewallRule {
+
+    param (
+        [Parameter(Mandatory=$true)] 
+        #DFW rule name
+        [string]$DFWruleName,
+        [Parameter(Mandatory=$true)] 
+        [ValidateSet('allow','deny')]
+        #DFW rule action
+        [string]$DFWruleAction,
+        [Parameter(Mandatory=$false)] 
+        #DFW rule AppliedTo object
+        [string]$DFWAppliedToObject,
+        [Parameter(Mandatory=$false)] 
+        #include vCD VM object as source
+        [array]$SourceVMobject,
+        [Parameter(Mandatory=$false)] 
+        #include vCD IpSet object as source
+        [array]$SourceIpSetobject,
+        [Parameter(Mandatory=$false)] 
+        #include vCD MacSet object as source
+        [array]$SourceSecurityGroupobject,
+        [Parameter(Mandatory=$false)] 
+        #exclude source
+        [bool]$SourceNegate=$false,
+        [Parameter(Mandatory=$false)] 
+        #include vCD VM object as destination
+        [array]$DestinationVMobject,
+        [Parameter(Mandatory=$false)] 
+        #include vCD IpSet object as destination
+        [array]$DestinationIpSetobject,
+        [Parameter(Mandatory=$false)] 
+        #include vCD MacSet object as destination
+        [array]$DestinationSecurityGroupobject,
+        [Parameter(Mandatory=$false)] 
+        #exclude destination
+        [bool]$DestinationNegate=$false,
+        [Parameter(Mandatory=$false)] 
+        #define service
+        [array]$ServiceObject,
+        [Parameter(Mandatory=$false)] 
+        #DFW rule logging
+        [System.Boolean]$DFWrulelogging=$false,
+        [Parameter(Mandatory=$false)] 
+        #DFW rule logging
+        [System.Boolean]$DFWruleDisabled=$false
+    )
+
+    begin {$OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid}
+
+    process {
+        #create DFW rule body base section
+        [string] $body = "<rule disabled=""$($DFWruleDisabled)"" logged=""$($DFWrulelogging)""><name>$($DFWruleName)</name><action>$($DFWruleAction)</action><notes></notes>"
+
+        #create DFW rule body AppliedTo section 
+        if (!$DFWAppliedToObject) {
+            $OrgVdc = get-vcdnsxorg | Get-vCDNSXOrgVDC -OrgVdcGuid $OrgVdcGuid 
+            [string] $body += "
+            <appliedToList><appliedTo><name>$($OrgVdc.OrgVdcName)</name><value>$($OrgVdc.OrgVdcGuid)</value><type>VDC</type></appliedTo></appliedToList>"
+        } else {
+            write-error "AppliedTo function not implementation in PS Module yet"
+        }
+
+        #create DFW section body
+        $DFWResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/firewall/globalroot-0/config/layer3sections/$($OrgVdcGuid)"
+        $SectionID = $DFWResponse.xml.section.id
+        [string]$body += "<sectionId>$($SectionID)<sectionId>"
+
+        #create body member section
+        if ($IncludeVMobject) {
+            foreach ($VMobject in $IncludeVMobject) {
+                [string]$body += "<member><objectId>$($VMobject.VmVcdId)</objectId><type><typeName>VirtualMachine</typeName></type><name>$($VMobject.VmName)</name><clientHandle></clientHandle></member>"
+            }
+        }
+
+        if ($IncludeIpSetobject) {
+            foreach ($IpSetobject in $IncludeIpSetobject) {
+                [string]$body += "<member><objectId>$($IpSetobject.IpSetGuid)</objectId><type><typeName>IPSet</typeName></type><name>$($IpSetobject.IpSetName)</name><clientHandle></clientHandle></member>"
+            }
+        }
+
+        if ($IncludeMacSetobject) {
+            foreach ($MacSetobject in $IncludeMacSetobject) {
+                [string]$body += "<member><objectId>$($MacSetobject.MacsetGuid)</objectId><type><typeName>MACSet</typeName></type><name>$($MacSetobject.MacsetName)</name><clientHandle></clientHandle></member>"
+            }
+        }
+
+        if ($IncludeSecurityTagobject) {
+            foreach ($SecurityTagobject in $IncludeSecurityTagobject) {
+                [string]$body += "<member><objectId>$($SecurityTagobject.SecuritytagGuid)</objectId><type><typeName>SecurityTag</typeName></type><name>$($SecurityTagobject.SecuritytagName)</name><clientHandle></clientHandle></member>"
+            }
+        }
+
+        if ($ExcludeVMobject) {
+            foreach ($VMobject in $ExcludeVMobject) {
+                [string]$body += "<excludeMember><objectId>$($VMobject.VmVcdId)</objectId><type><typeName>VirtualMachine</typeName></type><name>$($VMobject.VmName)</name><clientHandle></clientHandle></excludeMember>"
+            }
+        }
+
+        if ($ExcludeIpSetobject) {
+            foreach ($IpSetobject in $ExcludeIpSetobject) {
+                [string]$body += "<excludeMember><objectId>$($IpSetobject.IpSetGuid)</objectId><type><typeName>IPSet</typeName></type><name>$($IpSetobject.IpSetName)</name><clientHandle></clientHandle></excludeMember>"
+            }
+        }
+
+        if ($ExcludeMacSetobject) {
+            foreach ($MacSetobject in $ExcludeMacSetobject) {
+                [string]$body += "<excludeMember><objectId>$($MacSetobject.MacsetGuid)</objectId><type><typeName>MACSet</typeName></type><name>$($MacSetobject.MacsetName)</name><clientHandle></clientHandle></excludeMember>"
+            }
+        }
+
+        if ($ExcludeSecurityTagobject) {
+            foreach ($SecurityTagobject in $ExcludeSecurityTagobject) {
+                [string]$body += "<excludeMember><objectId>$($SecurityTagobject.SecuritytagGuid)</objectId><type><typeName>SecurityTag</typeName></type><name>$($SecurityTagobject.SecuritytagName)</name><clientHandle></clientHandle></excludeMember>"
+            }
+        }
+
+        #complete body
+        [string]$body += "</rule>"
+
+        if (!$DefaultvCDNSXconnection) {
+            Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
+        } else {
+         
+            write-host $body
+            $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/firewall/globalroot-0/config/layer3sections/$($OrgVdcGuid)/rules" -body $body
+            if ($SecurityGroupObjResponse.Headers) {
+                $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/$($SecurityGroupGuid)"
+            }
+        }
+
+        $SecurityGroupObjReturn = @()
+        foreach ($SecurityGroupXMLObject in $SecurityGroupObjResponse.xml.securitygroup) {
+
+            $SecurityGroupPSObject = [PSCustomObject]@{
+                SecurityGroupName = $SecurityGroupXMLObject.name
+                SecurityGroupMember = $SecurityGroupXMLObject.member
+                SecurityGroupExcludeMember = $SecurityGroupXMLObject.excludeMember
+                SecurityGroupGuid = $SecurityGroupXMLObject.objectId
+            }
+            $SecurityGroupObjReturn += $SecurityGroupPSObject
+        }    
+    }
+
+    end {$SecurityGroupObjReturn}
 }
