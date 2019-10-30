@@ -92,21 +92,22 @@ function Invoke-vCDNSXRestMethod {
                 "v9.7" {$headerDictionary.add("accept", "application/*+xml;version=32.0")}
                 "v10.0" {$headerDictionary.add("accept", "application/*+xml;version=33.0")}
             }
-        } elseif ($extraheader) {
-            $extraheader | ForEach-Object {$headerDictionary.add($_)}
-        }
+        } 
     }
+    if ($extraheader) {$headerDictionary += $extraheader}
+    
     $headerDictionary.add("Content-Type", "application/xml")
     $FullURI = "$($protocol)://$($server):$($Port)$($URI)"
     write-debug "$($MyInvocation.MyCommand.Name) : Method: $method, URI: $FullURI, Body: `n$($body )"
     
     #do rest call
-    write-host "executing $($Method) : $($FullURI)"
+    #for debuggin only
+    #write-host "executing $($Method) : $($FullURI)"
         try {
         if ( $PsBoundParameters.ContainsKey('Body')) {
-            $response = invoke-restmethod -method $method -headers $headerDictionary -uri $FullURI -body $body -TimeoutSec $Timeout -SkipCertificateCheck -ResponseHeadersVariable responseHeaders
+            $response = invoke-restmethod -method $method -uri $FullURI -headers $headerDictionary -body $body -TimeoutSec $Timeout -SkipCertificateCheck -ResponseHeadersVariable responseHeaders -SkipHeaderValidation
         } else {
-            $response = invoke-restmethod -method $method -uri $FullURI -headers $headerDictionary -TimeoutSec $Timeout -SkipCertificateCheck -ResponseHeadersVariable responseHeaders
+            $response = invoke-restmethod -method $method -uri $FullURI -headers $headerDictionary -TimeoutSec $Timeout -SkipCertificateCheck -ResponseHeadersVariable responseHeaders -SkipHeaderValidation
             
         }
     }
@@ -593,10 +594,10 @@ function Get-vCDNSXSecurityTagVMs{
 function Get-vCDNSXDistributedFirewallRule{
 
     param (
-        [Parameter(Mandatory=$false, parametersetname="DFWruleName")] 
+        [Parameter(Mandatory=$false)] 
         #firewall rule name
         [string]$DFWruleName,
-        [Parameter(Mandatory=$false, parametersetname="DFWruleId")] 
+        [Parameter(Mandatory=$false)] 
         #firewall rule name
         [string]$DFWruleId
     )
@@ -607,7 +608,7 @@ function Get-vCDNSXDistributedFirewallRule{
         Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
     } else {
         $OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid
-        if ($pscmdlet.ParameterSetName -eq "DFWruleId") {
+        if ($DFWruleId) {
             $DFWResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/firewall/globalroot-0/config/layer3sections/$($OrgVdcGuid)/rules/$($DFWruleId)"
             $DFWruleXMLobject = $DFWResponse.xml.rule
             $DFWrulePSObject = [PSCustomObject]@{
@@ -647,10 +648,6 @@ function Get-vCDNSXDistributedFirewallRule{
             if ($DFWruleName) {$DFWReturn = $DFWReturn | Where-Object {$_.DFWruleName -match $DFWruleName}}
         }
     }
-
-    
-    
-    
     $DFWReturn 
 }
 
@@ -1027,11 +1024,12 @@ function Add-vCDNSXDistributedFirewallRule {
         #include vCD IpSet object as source
         [array]$SourceIpSetobject,
         [Parameter(Mandatory=$false)] 
-        #include vCD MacSet object as source
+        #include vCD Securitygroup object as source
         [array]$SourceSecurityGroupobject,
         [Parameter(Mandatory=$false)] 
-        #exclude source
-        [bool]$SourceNegate=$false,
+        [ValidateSet('true','false')]
+        #exclude source/negate
+        [string]$SourceNegate="false",
         [Parameter(Mandatory=$false)] 
         #include vCD VM object as destination
         [array]$DestinationVMobject,
@@ -1041,18 +1039,22 @@ function Add-vCDNSXDistributedFirewallRule {
         [Parameter(Mandatory=$false)] 
         #include vCD MacSet object as destination
         [array]$DestinationSecurityGroupobject,
-        [Parameter(Mandatory=$false)] 
+        [Parameter(Mandatory=$false)]
+        [ValidateSet('true','false')]
         #exclude destination
-        [bool]$DestinationNegate=$false,
+        [string]$DestinationNegate="false",
         [Parameter(Mandatory=$false)] 
         #define service
         [array]$ServiceObject,
         [Parameter(Mandatory=$false)] 
+        [ValidateSet('true','false')]
         #DFW rule logging
-        [System.Boolean]$DFWrulelogging=$false,
+        [string]$DFWrulelogging="false",
         [Parameter(Mandatory=$false)] 
-        #DFW rule logging
-        [System.Boolean]$DFWruleDisabled=$false
+        [ValidateSet('true','false')]
+        #DFW rule enabled/disabled
+        [string]$DFWruleDisabled="false"
+
     )
 
     begin {$OrgVdcGuid = $DefaultvCDNSXconnection.OrgVdcGuid}
@@ -1064,92 +1066,99 @@ function Add-vCDNSXDistributedFirewallRule {
         #create DFW rule body AppliedTo section 
         if (!$DFWAppliedToObject) {
             $OrgVdc = get-vcdnsxorg | Get-vCDNSXOrgVDC -OrgVdcGuid $OrgVdcGuid 
-            [string] $body += "
-            <appliedToList><appliedTo><name>$($OrgVdc.OrgVdcName)</name><value>$($OrgVdc.OrgVdcGuid)</value><type>VDC</type></appliedTo></appliedToList>"
+            [string] $body += "<appliedToList><appliedTo><name>$($OrgVdc.OrgVdcName)</name><value>$($OrgVdc.OrgVdcGuid)</value><type>VDC</type></appliedTo></appliedToList>"
         } else {
             write-error "AppliedTo function not implementation in PS Module yet"
+            return
         }
 
         #create DFW section body
         $DFWResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/firewall/globalroot-0/config/layer3sections/$($OrgVdcGuid)"
         $SectionID = $DFWResponse.xml.section.id
-        [string]$body += "<sectionId>$($SectionID)<sectionId>"
+        $ExtraHeader = @{}
+        $ExtraHeader.Add("If-Match",$DFWResponse.xml.section.generationNumber)
+        [string]$body += "<sectionId>$($SectionID)</sectionId>"
 
-        #create body member section
-        if ($IncludeVMobject) {
-            foreach ($VMobject in $IncludeVMobject) {
-                [string]$body += "<member><objectId>$($VMobject.VmVcdId)</objectId><type><typeName>VirtualMachine</typeName></type><name>$($VMobject.VmName)</name><clientHandle></clientHandle></member>"
+        #create body source section
+        if ($SourceVMobject -or $SourceIpSetobject -or $SourceSecurityGroupobject) {
+            [string]$body += "<sources excluded=""$($SourceNegate)"">"
+            if ($SourceVMobject) {
+                foreach ($VMobject in $SourceVMobject) {
+                    [string]$body += "<source><value>$($VMobject.VmVcdId)</value><type>VirtualMachine</type><name>$($VMobject.VmName)</name></source>"
+                }
             }
+
+            if ($SourceIpSetobject) {
+                foreach ($IpSetobject in $SourceIpSetobject) {
+                    [string]$body += "<source><value>$($IpSetobject.IpSetGuid)</value><type>IPSet</type><name>$($IpSetobject.IpSetName)</name></source>"
+                }
+            }
+
+            if ($SourceSecurityGroupobject) {
+                foreach ($SecurityGroupobject in $SourceSecurityGroupobject) {
+                    [string]$body += "<source><value>$($SecurityGroupobject.SecurityGroupGuid)</value><type>SecurityGroup</type><name>$($SecurityGroupobject.SecurityGroupName)</name></source>"
+                }
+            }
+            [string]$body += "</sources>"
         }
 
-        if ($IncludeIpSetobject) {
-            foreach ($IpSetobject in $IncludeIpSetobject) {
-                [string]$body += "<member><objectId>$($IpSetobject.IpSetGuid)</objectId><type><typeName>IPSet</typeName></type><name>$($IpSetobject.IpSetName)</name><clientHandle></clientHandle></member>"
+        #create body destination section
+        if ($DestinationVMobject -or $DestinationIpSetobject -or $DestinationSecurityGroupobject) {
+            [string]$body += "<destinations excluded=""$($DestinationNegate)"">"
+            if ($DestinationVMobject) {
+                foreach ($VMobject in $DestinationVMobject) {
+                    [string]$body += "<destination><value>$($VMobject.VmVcdId)</value><type>VirtualMachine</type><name>$($VMobject.VmName)</name></destination>"
+                }
             }
+
+            if ($DestinationIpSetobject) {
+                foreach ($IpSetobject in $DestinationIpSetobject) {
+                    [string]$body += "<destination><value>$($IpSetobject.IpSetGuid)</value><type>IPSet</type><name>$($IpSetobject.IpSetName)</name></destination>"
+                }
+            }
+
+            if ($DestinationSecurityGroupobject) {
+                foreach ($SecurityGroupobject in $DestinationSecurityGroupobject) {
+                    [string]$body += "<destination><value>$($SecurityGroupobject.SecurityGroupGuid)</value><type>SecurityGroup</type><name>$($SecurityGroupobject.SecurityGroupName)</name></destination>"
+                }
+            }
+            [string]$body += "</destinations>"
         }
 
-        if ($IncludeMacSetobject) {
-            foreach ($MacSetobject in $IncludeMacSetobject) {
-                [string]$body += "<member><objectId>$($MacSetobject.MacsetGuid)</objectId><type><typeName>MACSet</typeName></type><name>$($MacSetobject.MacsetName)</name><clientHandle></clientHandle></member>"
+        if ($ServiceObject) {
+            [string]$body += "<services>"
+            foreach ($Object in $ServiceObject) {
+                [string]$body += "<service><value>$($Object.ServiceGuid)</value><type>Application</type></service>"
             }
-        }
-
-        if ($IncludeSecurityTagobject) {
-            foreach ($SecurityTagobject in $IncludeSecurityTagobject) {
-                [string]$body += "<member><objectId>$($SecurityTagobject.SecuritytagGuid)</objectId><type><typeName>SecurityTag</typeName></type><name>$($SecurityTagobject.SecuritytagName)</name><clientHandle></clientHandle></member>"
-            }
-        }
-
-        if ($ExcludeVMobject) {
-            foreach ($VMobject in $ExcludeVMobject) {
-                [string]$body += "<excludeMember><objectId>$($VMobject.VmVcdId)</objectId><type><typeName>VirtualMachine</typeName></type><name>$($VMobject.VmName)</name><clientHandle></clientHandle></excludeMember>"
-            }
-        }
-
-        if ($ExcludeIpSetobject) {
-            foreach ($IpSetobject in $ExcludeIpSetobject) {
-                [string]$body += "<excludeMember><objectId>$($IpSetobject.IpSetGuid)</objectId><type><typeName>IPSet</typeName></type><name>$($IpSetobject.IpSetName)</name><clientHandle></clientHandle></excludeMember>"
-            }
-        }
-
-        if ($ExcludeMacSetobject) {
-            foreach ($MacSetobject in $ExcludeMacSetobject) {
-                [string]$body += "<excludeMember><objectId>$($MacSetobject.MacsetGuid)</objectId><type><typeName>MACSet</typeName></type><name>$($MacSetobject.MacsetName)</name><clientHandle></clientHandle></excludeMember>"
-            }
-        }
-
-        if ($ExcludeSecurityTagobject) {
-            foreach ($SecurityTagobject in $ExcludeSecurityTagobject) {
-                [string]$body += "<excludeMember><objectId>$($SecurityTagobject.SecuritytagGuid)</objectId><type><typeName>SecurityTag</typeName></type><name>$($SecurityTagobject.SecuritytagName)</name><clientHandle></clientHandle></excludeMember>"
-            }
+            [string]$body += "</services>"
         }
 
         #complete body
         [string]$body += "</rule>"
-
+        write-host $body
         if (!$DefaultvCDNSXconnection) {
             Write-Error "Not connected to a (default) vCloud Director server, connect using Connect-vCDNSXAPI cmdlet"
         } else {
-         
-            write-host $body
-            $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/firewall/globalroot-0/config/layer3sections/$($OrgVdcGuid)/rules" -body $body
-            if ($SecurityGroupObjResponse.Headers) {
-                $SecurityGroupObjResponse = Invoke-vCDNSXRestMethod -method get -URI "/network/services/securitygroup/$($SecurityGroupGuid)"
-            }
+            $DFWResponse = Invoke-vCDNSXRestMethod -method post -URI "/network/firewall/globalroot-0/config/layer3sections/$($OrgVdcGuid)/rules" -body $body -extraheader $ExtraHeader
         }
 
-        $SecurityGroupObjReturn = @()
-        foreach ($SecurityGroupXMLObject in $SecurityGroupObjResponse.xml.securitygroup) {
-
-            $SecurityGroupPSObject = [PSCustomObject]@{
-                SecurityGroupName = $SecurityGroupXMLObject.name
-                SecurityGroupMember = $SecurityGroupXMLObject.member
-                SecurityGroupExcludeMember = $SecurityGroupXMLObject.excludeMember
-                SecurityGroupGuid = $SecurityGroupXMLObject.objectId
+        $DFWruleXMLobject = $DFWResponse.xml.rule
+            $DFWrulePSObject = [PSCustomObject]@{
+                DFWruleID = $DFWruleXMLobject.id
+                DFWruleName = $DFWruleXMLobject.name
+                DFWruleLogged = $DFWruleXMLobject.logged
+                DFWruleAction = $DFWruleXMLobject.action
+                DFWruleAppliedToList = $DFWruleXMLobject.appliedToList
+                DFWruleDirection = $DFWruleXMLobject.direction
+                DFWrulePacketType = $DFWruleXMLobject.packetType
+                DFWruleSourceNegate = $DFWruleXMLobject.sources.excluded
+                DFWruleSourceMember = $DFWruleXMLobject.sources.source
+                DFWruleDestinationNegate = $DFWruleXMLobject.destinations.excluded
+                DFWruleDestinationMember = $DFWruleXMLobject.destinations.destination
+                DFWruleServices = $DFWruleXMLobject.services.service
             }
-            $SecurityGroupObjReturn += $SecurityGroupPSObject
-        }    
+            $DFWReturn += $DFWrulePSObject
     }
 
-    end {$SecurityGroupObjReturn}
+    end {$DFWReturn}
 }
