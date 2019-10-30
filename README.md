@@ -108,26 +108,26 @@ Retrieves all OrgVDC firewall rules, or only a specific one when the -DFWruleId 
 
 # NEW- PS-cmdlets
 
-New-vCDNSXIpset [-IpSetName] <Object> [[-IpSetValue] <string>] [[-Description] <string>] [[-OrgVdcGuid] <string>]
+**New-vCDNSXIpset** [-IpSetName] <Object> [[-IpSetValue] <string>] [[-Description] <string>] [[-OrgVdcGuid] <string>]
 
 Creates a new IpSet object within the OrgVDC.
 
-**New-vCDNSXMacSet [-MacSetName] <string> [[-MacSetValue] <string>] [[-Description] <string>] [[-OrgVdcGuid] <string>]**
+**New-vCDNSXMacSet** [-MacSetName] <string> [[-MacSetValue] <string>] [[-Description] <string>] [[-OrgVdcGuid] <string>]
 
 Creates a new MacSet object within the OrgVDC.
 
-**New-vCDNSXSecurityGroup [-SecurityGroupName] <string> [[-Description] <string>] [[-OrgVdcGuid] <string>]**
+**New-vCDNSXSecurityGroup** [-SecurityGroupName] <string> [[-Description] <string>] [[-OrgVdcGuid] <string>]
 
 Creates a new SecurityGroup object within the OrgVDC.
 
-**New-vCDNSXSecurityTag [-SecurityTagName] <string> [[-Description] <string>] [[-OrgVdcGuid] <string>]**
+**New-vCDNSXSecurityTag** [-SecurityTagName] <string> [[-Description] <string>] [[-OrgVdcGuid] <string>]
 
 
 Creates a new SecurityTag object within the OrgVDC.
 
 # ADD- PS-cmdlets
 
-**Add-vCDNSXSecurityGroupMember -SecurityGroupGuid <string> [-VmName <string>]**
+**Add-vCDNSXSecurityGroupMember** -SecurityGroupGuid <string> [-VmName <string>]
 
 Adds (one or multiple) VMs to a specific NSX Security Group
 
@@ -138,7 +138,7 @@ This example will add VM with name "test-vm" to the NSX Security Group "test-SG"
 
 The ***Add-vCDNSXSecurityGroupMember*** cmdlet is still being developed: assigning other objects to a NSX Security Group is not yet available.
 
-**Add-vCDNSXDistributedFirewallRule [-DFWruleName] <string> [-DFWruleAction] {allow | deny} [[-DFWAppliedToObject] <string>] [[-SourceVMobject] <array>] [[-SourceIpSetobject] <array>] [[-SourceSecurityGroupobject] <array>] [[-SourceNegate] {true | false}] [[-DestinationVMobject] <array>] [[-DestinationIpSetobject] <array>] [[-DestinationSecurityGroupobject] <array>] [[-DestinationNegate] {true | false}] [[-ServiceObject] <array>] [[-DFWrulelogging] {true | false}] [[-DFWruleDisabled] {true | false}]**
+**Add-vCDNSXDistributedFirewallRule** [-DFWruleName] <string> [-DFWruleAction] {allow | deny} [[-DFWAppliedToObject] <string>] [[-SourceVMobject] <array>] [[-SourceIpSetobject] <array>] [[-SourceSecurityGroupobject] <array>] [[-SourceNegate] {true | false}] [[-DestinationVMobject] <array>] [[-DestinationIpSetobject] <array>] [[-DestinationSecurityGroupobject] <array>] [[-DestinationNegate] {true | false}] [[-ServiceObject] <array>] [[-DFWrulelogging] {true | false}] [[-DFWruleDisabled] {true | false}]
 
 Adds a firewall rule to the NSX DFW.
 You can define multiple source- and destination objects in one command.
