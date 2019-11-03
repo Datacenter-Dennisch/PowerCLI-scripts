@@ -1099,6 +1099,7 @@ function Add-vCDNSXDistributedFirewallRule {
 
     end {$DFWReturn}
 }
+
 function Remove-vCDNSXSecurityGroupStaticMember {
 
     param (
@@ -1161,4 +1162,3 @@ function Remove-vCDNSXSecurityGroupStaticMember {
     if ($SecurityGroupName) {$SecurityGroupXMLObjectReturn = $SecurityGroupXMLObjectReturn | Where-Object {$_.SecurityGroupName -match $SecurityGroupName}}
     $SecurityGroupXMLObjectReturn 
 }
-
