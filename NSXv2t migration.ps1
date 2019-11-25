@@ -179,3 +179,5 @@ function Write-log {
     
     
     $logicalswitches = Invoke-NsxRestMethod -method get -URI "/api/2.0/vdn/virtualwires" -connection $DefaultNSXConnection
+
+    while ($logicalswitches -eq $null) {write-host "hoi"}
