@@ -40,3 +40,6 @@ foreach ($VM in $VMs) {
     }
 }
 
+$NewIpSetObj = $CreateIpSetObjList | Out-GridView -PassThru -Title "select IpSet objects to create" | % {New-NsxIpSet -Name $_.IpSetObjName -Description $_.IPSetObjDescr -IPAddress $_.IPSetObjValue}
+
+
