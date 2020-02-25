@@ -286,14 +286,18 @@ param (
         $VdcResponse = Invoke-vCDNSXRestMethod -method get -URI "/api/admin/org/$($OrgGuid)"
     }
 
-    $vDCReturn = [PSCustomObject]@{
-        OrgVdcName = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.name
-        OrgVdcHref = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.href
-        OrgVdcGuid = $VdcResponse.xml.AdminOrg.Vdcs.Vdc.id.split(":")[3]
+    $vDCReturn = @()
+    foreach ($VdcResponseItem in $VdcResponse.xml.AdminOrg.Vdcs.Vdc) {
+        $vDCReturnItem = [PSCustomObject]@{
+            OrgVdcName = $VdcResponseItem.name
+            OrgVdcHref = $VdcResponseItem.href
+            OrgVdcGuid = $VdcResponseItem.id.split(":")[3]
+        }
+        $vDCReturn += $vDCReturnItem
     }
     if ($OrgVdcGuid) {$vDCReturn = $vDCReturn | Where-Object {$_.OrgVdcGuid -eq $OrgVdcGuid}}
 
-    $vDCReturn 
+    $vDCReturn
 }
 
 function Get-vCDNSXOrgVDCvApp {
