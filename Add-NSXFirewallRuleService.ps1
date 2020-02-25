@@ -24,7 +24,6 @@ function Add-NsxFirewallRuleService {
 
         [Parameter (Mandatory=$true,ValueFromPipeline=$true)]
             # DFW rule as returned by Get-NsxFirewallRule / New-NsxFirewallRule
-            [ValidateScript({ ValidateFirewallRule $_ })]
             [System.Xml.XmlElement]$FirewallRule,
         [Parameter (Mandatory=$true)]
             [ValidateNotNullOrEmpty()]
@@ -38,14 +37,14 @@ function Add-NsxFirewallRuleService {
     begin {}
 
     process {
-        $sectionId = $xmlrule.ParentNode.Id
-        $RuleId = $xmlrule.id
-        $generationNumber = $xmlrule.ParentNode.generationnumber
+        $sectionId = $FirewallRule.ParentNode.Id
+        $RuleId = $FirewallRule.id
+        $generationNumber = $FirewallRule.ParentNode.generationnumber
 
         $xmldoc = [xml]$FirewallRule.outerxml
         $xmldocrule = $xmldoc.SelectNodes("rule")
         $xmldocruleservices = $xmldocrule.SelectNodes("services")
-        foreach ($serviceitem in $serviceselection) {
+        foreach ($serviceitem in $Service) {
             [system.xml.xmlelement]$xmlitem = $xmldoc.CreateElement("service")
             Add-XmlElement -xmlRoot $xmlitem -xmlElementName "value" -xmlElementText $serviceitem.objectId
             $xmldocruleservices.AppendChild($xmlitem)
@@ -55,7 +54,7 @@ function Add-NsxFirewallRuleService {
         $IfMatchHeader = @{"If-Match"=$generationNumber}
 
         try {
-            $response = Invoke-NsxWebRequest -method put -Uri $uri -body $xmldoc.ruleOuterXml -extraheader $IfMatchHeader -connection $connection
+            $response = Invoke-NsxWebRequest -method put -Uri $uri -body $xmldoc.rule.OuterXml -extraheader $IfMatchHeader -connection $connection
             [xml]$ruleElem = $response.Content
             Get-NsxFirewallRule -RuleId $ruleElem.rule.id
         }
