@@ -148,7 +148,7 @@ function Invoke-vCDNSXRestMethod {
     $return
 }
 
-
+ 
 function Connect-vCDNSXAPI {
 
 param (
