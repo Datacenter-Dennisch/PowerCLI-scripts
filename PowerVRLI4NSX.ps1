@@ -129,12 +129,12 @@ function Get-LoginsightNSXEvents {
 
     Process {
         if (([DateTimeOffset]::Now.ToUnixTimeSeconds()) -gt $ConnectionPS.TTLexpires) {Connect-LogInsightServer -reconnnect $true}
-        $URI = $ConnectionPS.BaseURI + "/events/text/dfwpktlogs"
-        if ($textfilter) {$URI += "/text/"+$textfilter}
+        $URI = $ConnectionPS.BaseURI + "/events"
+        if ($textfilter) {$URI += "/text/"+$textfilter} else {$URI += "/text/dfwpktlogs"}
         if ($ruleid) {$URI += "/com.vmware.nsx-v:vmw_nsx_firewall_ruleid/"+$ruleid}
         $URI += "?content-pack-fields=com.vmware.nsx-v"
         if ($limit) {$URI += "&limit=$($limit)"}
-        #write-host Ëxecuting .. $URI"
+        write-host "Ëxecuting .. $URI"
         try {
             $response = Invoke-WebRequest -Uri $URI  -Method get -Headers $ConnectionPS.Header
         }
@@ -195,7 +195,7 @@ function Enum-PSLoginsightevent {
             $AllsecurityGroupsVMOverview += $AllsecurityGroupsVMOverviewItem
         }
         write-host "retrieving VM information"
-        $VMoverview = get-view -ViewType "VirtualMachine" 
+        $VMoverview = Get-View -ViewType "VirtualMachine" 
 
         $ReturnOutput = @()
         if (!$NoDNSRecordlist) {$NoDNSRecordlist = @()}
@@ -204,39 +204,43 @@ function Enum-PSLoginsightevent {
     
             $Sourcevm = $VMoverview.where({$_.guest.Net.ipconfig.IpAddress.ipaddress -contains $PsEventItem.vmwnsxfirewallsrc})
             $Sourcevmname = $Sourcevm.name
-            $SourceSGName = $null
-            if (!$Sourcevmname) {
-                try {$Sourcevmname =([system.net.dns]::GetHostByAddress($PsEventItem.vmwnsxfirewallsrc)).hostname}
+            $SourceSGNames,$SourceDNSname = $null
+            if ($Sourcevmname) {
+                $SourceSGNames = ($AllsecurityGroupsVMOverview.where({$_.VirtualMachines.Vmid -contains $Sourcevm.moref.value})).SecurityGroup.name
+            }
+
+            if ($NoDNSRecordlist -notcontains $PsEventItem.vmwnsxfirewallsrc) {
+                try {$SourceDNSname =([system.net.dns]::GetHostByAddress($PsEventItem.vmwnsxfirewallsrc)).hostname}
                 catch {
                     write-host "no DNS record for $($PsEventItem.vmwnsxfirewallsrc)"
                     $NoDNSRecordlist += $PsEventItem.vmwnsxfirewallsrc
                 } 
-            }else {
-                $SourceSGNames = ($AllsecurityGroupsVMOverview.where({$_.VirtualMachines.Vmid -contains $Sourcevm.moref.value})).SecurityGroup.name
             }
+            
 
-           
-            
-            
             $Destinationvm = $VMoverview.where({$_.guest.Net.ipconfig.IpAddress.ipaddress -contains $PsEventItem.vmwnsxfirewalldst})
             $Destinationvmname = $Destinationvm.Name
-            if (!$Destinationvmname) {
-                try {$Destinationvmname = ([system.net.dns]::GetHostByAddress($PsEventItem.vmwnsxfirewalldst)).hostname}
-                catch {
-                    write-host "no DNS record for $($PsEventItem.vmwnsxfirewalldst)"
-                    $NoDNSRecordlist += $PsEventItem.vmwnsxfirewalldst
-                }
-            } else {
+            $DestinationSGNames,$DestinationDNSname = $null
+            if ($Destinationvmname) {
                 $DestinationSGNames = ($AllsecurityGroupsVMOverview.where({$_.VirtualMachines.VmId -contains $Destinationvm.moref.value})).SecurityGroup.name
             }
-
+            if ($NoDNSRecordlist -notcontains $PsEventItem.vmwnsxfirewalldst) {
+                    try {$DestinationDNSname = ([system.net.dns]::GetHostByAddress($PsEventItem.vmwnsxfirewalldst)).hostname}
+                    catch {
+                        write-host "no DNS record for $($PsEventItem.vmwnsxfirewalldst)"
+                        $NoDNSRecordlist += $PsEventItem.vmwnsxfirewalldst
+                    }
+                }
+            
             $ReturnItem = New-Object psobject -Property @{
                 vmwnsxfirewallruleid = $PsEventItem.vmwnsxfirewallruleid
                 vmwnsxfirewallsrc = $PsEventItem.vmwnsxfirewallsrc
                 sourceVMname = $Sourcevmname
+                sourceDNSname = $SourceDNSname
                 sourceSGname = $SourceSGNames
                 vmwnsxfirewalldst = $PsEventItem.vmwnsxfirewalldst
                 destinationVMname = $Destinationvmname
+                destinationDNSname = $DestinationDNSname
                 destinationSGName = $DestinationSGNames
                 vmwnsxfirewallprotocol = $PsEventItem.vmwnsxfirewallprotocol
                 vmwnsxfirewallport = $PsEventItem.vmwnsxfirewallport
@@ -256,17 +260,18 @@ if (!$Global:DefaultPSLogInsightserver) {
     } until ($Global:DefaultPSLogInsightserver)
 }
     
-$Targetrule = Get-NsxFirewallRule | Out-GridView -Title "Select DFW rule to view data" -PassThru
-$LogTag = $Targetrule.tag
+$Targetrule = Get-NsxFirewallRule | select name, id | Out-GridView -Title "Select DFW rule to view data" -PassThru
+
 $ruleid = $Targetrule.id
 
 $PsEvents = Get-LoginsightNSXEvents  -ruleid $ruleid -limit 1000
+
 
 #dedup $PsEvents
 $PsEvents = ($PsEvents |Group-Object vmwnsxfirewallsrc, vmwnsxfirewalldst,vmwnsxfirewallprotocol,vmwnsxfirewallport).foreach({$_.group[0]})
 
 $PsEventsOutput =  Enum-PSLoginsightevent -PsEvents $PsEvents -SecurityGroupNameFilter zone
 $PsEventsOutput | Out-GridView
+#$PsEventsOutput | select SourceVMname, DestinationDNSname, vmwnsxfirewalldst, vmwnsxfirewallprotocol, vmwnsxfirewallport | export-csv "validate.csv"
 
-
-
+$PsEventsOutput  | get-member
