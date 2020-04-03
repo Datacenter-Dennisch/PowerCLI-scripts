@@ -181,16 +181,29 @@ function Enum-PSLoginsightevent {
         if (!$global:DefaultVIServer) {
             Write-Error "Not connected to vCenter"
         } else {
+            write-host "Retrieving NSX Security Groups"
             if ($SecurityGroupNameFilter) {$AllsecurityGroups = (Get-NsxSecurityGroup).where({$_.name -match $SecurityGroupNameFilter})} else {$AllsecurityGroups = Get-NsxSecurityGroup}
         }
-        
+        $AllsecurityGroupsVMOverview = @()
+        ForEach ($AllsecurityGroup in $AllsecurityGroups) {
+            write-host "Enumeration $($AllsecurityGroup.name) VMs"
+            $AllsecurityGroupVMmembers = $AllsecurityGroup | Get-NsxSecurityGroupEffectiveVirtualMachine
+            $AllsecurityGroupsVMOverviewItem = New-Object psobject -Property @{
+                SecurityGroup = $AllsecurityGroup 
+                VirtualMachines = $AllsecurityGroupVMmembers
+            }
+            $AllsecurityGroupsVMOverview += $AllsecurityGroupsVMOverviewItem
+        }
+        write-host "retrieving VM information"
         $VMoverview = get-view -ViewType "VirtualMachine" 
+
         $ReturnOutput = @()
         if (!$NoDNSRecordlist) {$NoDNSRecordlist = @()}
+        write-host "Enumerating PSevents"
         foreach ($PsEventItem in $PsEvents) {
     
             $Sourcevm = $VMoverview.where({$_.guest.Net.ipconfig.IpAddress.ipaddress -contains $PsEventItem.vmwnsxfirewallsrc})
-            $Sourcevmname = $Sourcevm.vmname
+            $Sourcevmname = $Sourcevm.name
             $SourceSGName = $null
             if (!$Sourcevmname) {
                 try {$Sourcevmname =([system.net.dns]::GetHostByAddress($PsEventItem.vmwnsxfirewallsrc)).hostname}
@@ -199,11 +212,14 @@ function Enum-PSLoginsightevent {
                     $NoDNSRecordlist += $PsEventItem.vmwnsxfirewallsrc
                 } 
             }else {
-                $SourceSGName = ($AllsecurityGroups.where({$_.member.objectid -contains $Sourcevm.moref.value})).name
+                $SourceSGNames = ($AllsecurityGroupsVMOverview.where({$_.VirtualMachines.Vmid -contains $Sourcevm.moref.value})).SecurityGroup.name
             }
+
+           
+            
             
             $Destinationvm = $VMoverview.where({$_.guest.Net.ipconfig.IpAddress.ipaddress -contains $PsEventItem.vmwnsxfirewalldst})
-            $Destinationvmname = $Destinationvm.VmName
+            $Destinationvmname = $Destinationvm.Name
             if (!$Destinationvmname) {
                 try {$Destinationvmname = ([system.net.dns]::GetHostByAddress($PsEventItem.vmwnsxfirewalldst)).hostname}
                 catch {
@@ -211,17 +227,17 @@ function Enum-PSLoginsightevent {
                     $NoDNSRecordlist += $PsEventItem.vmwnsxfirewalldst
                 }
             } else {
-                $DestinationSGName = ($AllsecurityGroups.where({$_.member.objectid -contains $Destinationvm.moref.value})).name
+                $DestinationSGNames = ($AllsecurityGroupsVMOverview.where({$_.VirtualMachines.VmId -contains $Destinationvm.moref.value})).SecurityGroup.name
             }
 
             $ReturnItem = New-Object psobject -Property @{
                 vmwnsxfirewallruleid = $PsEventItem.vmwnsxfirewallruleid
                 vmwnsxfirewallsrc = $PsEventItem.vmwnsxfirewallsrc
                 sourceVMname = $Sourcevmname
-                sourceSGname = $SourceSGName
+                sourceSGname = $SourceSGNames
                 vmwnsxfirewalldst = $PsEventItem.vmwnsxfirewalldst
                 destinationVMname = $Destinationvmname
-                destinationSGName = $DestinationSGName
+                destinationSGName = $DestinationSGNames
                 vmwnsxfirewallprotocol = $PsEventItem.vmwnsxfirewallprotocol
                 vmwnsxfirewallport = $PsEventItem.vmwnsxfirewallport
                 vmwnsxfirewallaction = $PsEventItem.vmwnsxfirewallaction 
@@ -236,7 +252,7 @@ function Enum-PSLoginsightevent {
 if (!$Global:DefaultPSLogInsightserver) {
     do {
         $vrlicred = Get-Credential -Message "Please Enter Loginsight credentials"
-        Connect-LogInsightServer -Server "vrli.ssc.lan" -Credentials $vrlicred -Provider ActiveDirectory 
+        Connect-LogInsightServer -Server "vrli" -Credentials $vrlicred -Provider ActiveDirectory 
     } until ($Global:DefaultPSLogInsightserver)
 }
     
@@ -244,7 +260,7 @@ $Targetrule = Get-NsxFirewallRule | Out-GridView -Title "Select DFW rule to view
 $LogTag = $Targetrule.tag
 $ruleid = $Targetrule.id
 
-$PsEvents = Get-LoginsightNSXEvents  -ruleid $ruleid -limit 100
+$PsEvents = Get-LoginsightNSXEvents  -ruleid $ruleid -limit 1000
 
 #dedup $PsEvents
 $PsEvents = ($PsEvents |Group-Object vmwnsxfirewallsrc, vmwnsxfirewalldst,vmwnsxfirewallprotocol,vmwnsxfirewallport).foreach({$_.group[0]})
