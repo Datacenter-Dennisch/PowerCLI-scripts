@@ -5,7 +5,10 @@ function Set-NsxIpSet {
         [Parameter (Mandatory=$true,ValueFromPipeline=$true,Position=1)]
             [ValidateNotNullOrEmpty()]
             [System.Xml.XmlElement]$IPSet,
-        [Parameter (Mandatory=$true,Position=2)]
+        [Parameter (Mandatory=$false,Position=2)]
+            [ValidateNotNullOrEmpty()]
+            [String]$NewName,
+        [Parameter (Mandatory=$false,Position=3)]
             [ValidateNotNullOrEmpty()]
             [String]$Description,
         [Parameter (Mandatory=$False)]
@@ -18,7 +21,8 @@ function Set-NsxIpSet {
 
     process {
         #$IPSet = $PhyServerIpSetObj[0]
-        $IPset.description = $Description
+        if ($Description) {$IPset.description = $Description}
+        if ($NewName) {$IPset.name = $NewName}
         $body = $IPset.OuterXml
 
         $URI = "/api/2.0/services/ipset/$($IPset.objectId)"
