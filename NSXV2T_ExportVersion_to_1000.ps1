@@ -131,7 +131,7 @@ foreach ($vSphereCluster in get-cluster) {
 [securestring]$secStringPassword = ConvertTo-SecureString $userPassword -AsPlainText -Force
 [pscredential]$credObject = New-Object System.Management.Automation.PSCredential ($userName, $secStringPassword)
 
-foreach ($NSXDFWEnabledVMHost in $NSXDFWEnabledVMHosts[0]) {
+foreach ($NSXDFWEnabledVMHost in $NSXDFWEnabledVMHosts) {
 
     $VMhostSSHService = (Get-VMHostService -VMHost $NSXDFWEnabledVMHost).where({$_.key -eq "TSM-SSH"})
     if ($VMhostSSHService.Running -eq $False) {
