@@ -155,6 +155,7 @@ foreach ($NSXDFWEnabledVMHost in $NSXDFWEnabledVMHosts) {
     foreach ($filtername in $filternames) {
         $return = Invoke-SSHCommand -Command "vsipioctl getexportversion -f$($filtername)" -SessionId $SSHsessionid.SessionId
         $Exportversion = ($return.Output.split(":")[1]).Substring(1)
+        write-log -Message "$($NSXDFWEnabledVMHost.name): exportversions for filternames $($filtername) is $($Exportversion)" -Level Info
         if ($Exportversion -ne 1000) {
             do {
                 write-log -Message "$($NSXDFWEnabledVMHost.name): changing export version to 1000 for filter$($filtername)" -Level Info
