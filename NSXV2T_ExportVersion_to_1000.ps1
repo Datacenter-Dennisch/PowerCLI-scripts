@@ -102,12 +102,12 @@ if (!$DefaultNSXConnection) {
 $SSHModule = "Posh-SSH"
 Do {
     try {
-        Import-Module $SSHModule
+        Import-Module $SSHModule Import-Module $SSHModule -MinimumVersion 3.0.0
     } 
     catch {
         Write-Host "Module ""$($SSHModule)"" does not exist, installing"
         try {        
-            Install-Module -Name Posh-SSH -RequiredVersion 2.1
+            Install-Module -Name Posh-SSH -RequiredVersion 3.0.0
         }
         catch {
             Write-log -Message "Installation Error: manually install $SSHModule to continue"
