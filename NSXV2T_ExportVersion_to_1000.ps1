@@ -131,7 +131,7 @@ foreach ($vSphereCluster in get-cluster) {
 [securestring]$secStringPassword = ConvertTo-SecureString $userPassword -AsPlainText -Force
 [pscredential]$credObject = New-Object System.Management.Automation.PSCredential ($userName, $secStringPassword)
 
-foreach ($NSXDFWEnabledVMHost in $NSXDFWEnabledVMHosts) {
+foreach ($NSXDFWEnabledVMHost in $NSXDFWEnabledVMHosts[39]) {
 
     $VMhostSSHService = (Get-VMHostService -VMHost $NSXDFWEnabledVMHost).where({$_.key -eq "TSM-SSH"})
     if ($VMhostSSHService.Running -eq $False) {
@@ -145,25 +145,31 @@ foreach ($NSXDFWEnabledVMHost in $NSXDFWEnabledVMHosts) {
     $null = $esxcli.system.permission.set.invoke(@{id=$username;role="Admin"})
     
     write-log -Message "$($NSXDFWEnabledVMHost.name): connecting with SSH" -Level Info
-    $SSHsessionid = New-SSHSession -ComputerName $NSXDFWEnabledVMHost -Credential $credObject -AcceptKey
+    $SSHsessionid = New-SSHSession -ComputerName $NSXDFWEnabledVMHost.name -Credential $credObject -AcceptKey 
 
     write-log -Message "$($NSXDFWEnabledVMHost.name): retrieving filternames " -Level Info
     $return = Invoke-SSHCommand -Command "vsipioctl getfilters | grep ""Filter Name"" | grep ""sfw.2""" -SessionId $SSHsessionid.SessionId
-    $filternames = $return.Output.ForEach({$_.split(":")[1]})
     
-    write-log -Message "$($NSXDFWEnabledVMHost.name): retrieving exportversions from filternames " -Level Info
-    foreach ($filtername in $filternames) {
-        $return = Invoke-SSHCommand -Command "vsipioctl getexportversion -f$($filtername)" -SessionId $SSHsessionid.SessionId
-        $Exportversion = ($return.Output.split(":")[1]).Substring(1)
-        write-log -Message "$($NSXDFWEnabledVMHost.name): exportversions for filtername $($filtername) is $($Exportversion)" -Level Info
-        if ($Exportversion -ne 1000) {
-            do {
-                write-log -Message "$($NSXDFWEnabledVMHost.name): changing export version to 1000 for filter$($filtername)" -Level Info
-                $return = Invoke-SSHCommand -Command "vsipioctl setexportversion -f$($filtername) -e 1000" -SessionId $SSHsessionid.SessionId
-                $return = Invoke-SSHCommand -Command "vsipioctl getexportversion -f$($filtername)" -SessionId $SSHsessionid.SessionId
-                $Exportversion = ($return.Output.split(":")[1]).Substring(1)
-            } until ($Exportversion -eq 1000)
+    if ($return.output -ne "") {
+        $filternames = $return.Output.ForEach({$_.split(":")[1]})
+    
+        write-log -Message "$($NSXDFWEnabledVMHost.name): retrieving exportversions from filternames " -Level Info
+        foreach ($filtername in $filternames) {
+            $return = Invoke-SSHCommand -Command "vsipioctl getexportversion -f$($filtername)" -SessionId $SSHsessionid.SessionId
+            $Exportversion = ($return.Output.split(":")[1]).Substring(1)
+            write-log -Message "$($NSXDFWEnabledVMHost.name): exportversions for filtername $($filtername) is $($Exportversion)" -Level Info
+            if ($Exportversion -ne 1000) {
+                do {
+                    write-log -Message "$($NSXDFWEnabledVMHost.name): changing export version to 1000 for filter$($filtername)" -Level Info
+                    $return = Invoke-SSHCommand -Command "vsipioctl setexportversion -f$($filtername) -e 1000" -SessionId $SSHsessionid.SessionId
+                    $return = Invoke-SSHCommand -Command "vsipioctl getexportversion -f$($filtername)" -SessionId $SSHsessionid.SessionId
+                    $Exportversion = ($return.Output.split(":")[1]).Substring(1)
+                } until ($Exportversion -eq 1000)
+            }
+        
         }
+    } else {
+            write-log -Message "$($NSXDFWEnabledVMHost.name): no filters available" -Level Warn
     }
 
     write-log -Message "$($NSXDFWEnabledVMHost.name): disconnecting SSH session" -Level Info
