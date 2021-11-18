@@ -131,8 +131,11 @@ foreach ($vSphereCluster in get-cluster) {
 [securestring]$secStringPassword = ConvertTo-SecureString $userPassword -AsPlainText -Force
 [pscredential]$credObject = New-Object System.Management.Automation.PSCredential ($userName, $secStringPassword)
 
-foreach ($NSXDFWEnabledVMHost in $NSXDFWEnabledVMHosts[39]) {
 
+$counter = 0
+foreach ($NSXDFWEnabledVMHost in $NSXDFWEnabledVMHosts) {
+    $counter ++
+    write-progress -activity "working on vmhost $($NSXDFWEnabledVMHost.name)" -PercentComplete ($counter/$NSXDFWEnabledVMHosts.count*100)
     $VMhostSSHService = (Get-VMHostService -VMHost $NSXDFWEnabledVMHost).where({$_.key -eq "TSM-SSH"})
     if ($VMhostSSHService.Running -eq $False) {
         write-log -Message "$($NSXDFWEnabledVMHost.name): starting SSH deamon" -Level Info
@@ -183,4 +186,3 @@ foreach ($NSXDFWEnabledVMHost in $NSXDFWEnabledVMHosts[39]) {
         $null = Stop-VMHostService $VMhostSSHService -Confirm:$false
     }
 }
-
