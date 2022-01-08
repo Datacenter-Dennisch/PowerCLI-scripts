@@ -71,7 +71,7 @@ function Write-Log {
     }
 }
 
-$NSXTServers = $("NSXTmgr.vViking.nl")
+$NSXTServers = $("nsxtmgr.vViking.nl")
 foreach ($NSXTServer in $NSXTServers) {
     if ($global:DefaultNSXtServers.name -notcontains $NSXTServer ) {
         Write-log -message "Connecting to NSX-T Manager ""$($NSXTServer)""." -Level Info
@@ -95,17 +95,20 @@ $grouppathexpressionproxy = Get-NsxtpolicyService -name com.vmware.nsx_policy.in
 #retrieve all policy based groups.
 $groupobjectsreturn = $groupsproxy.list("default")
 
-$groupobjects = @()
 $groupobjects = $groupobjectsreturn.results
 do  {
     $groupobjectsreturn = $groupsproxy.list("default",$groupobjectsreturn.cursor)
     $groupobjects += $groupobjectsreturn.results
 } while ($groupobjectsreturn.cursor)
 
-#filter temporary objects from all groups based on tag scope "v_temporary"
+#filter v_temporary objects from all groups based on tag scope "v_temporary"
 $grouptempobjects = $groupobjects.where({$_.tags.scope -eq "v_temporary"})
+$grouptempobjects += $groupobjects.where({$_.description -eq "Temporary Applied_To Security Group for Migration"})
 
-foreach ($grouptempobject in $grouptempobjects) {
+
+write-log "Found $($grouptempobjects.Count) v_temporary groups."
+
+foreach ($grouptempobject in $grouptempobjects[0]) {
     
     write-log -message "retrieve parent group target from temporary group object ""$($grouptempobject.display_name)""."
     $ParentGroupsTargets = $groupassocsproxy.list($grouptempobject.path).results
@@ -128,6 +131,7 @@ foreach ($grouptempobject in $grouptempobjects) {
             $ParentGroupPathExpressionObjspec.resource_type = $ParentGroupPathExpressionObj.resource_type
             $ParentGroupPathExpressionObjspec.paths = $ParentGroupPathExpressionObjPaths.where({$_ -ne $ParentGroupPathExpressionObjPath})
 
+            #patch parent group with new path expression (remove temporary group from path expression)
             #$grouppathexpression.patch("default", $ParentGroupid, $ParentGroupPathExpressionObjId, $ParentGroupPathExpressionObjspec)
             write-log -Message "$($ParentGroupPathExpressionObjPathmember.display_name) removed as a member from (parent) group $($ParentGroup.display_name)" -Level Warn
         }
@@ -135,6 +139,7 @@ foreach ($grouptempobject in $grouptempobjects) {
         write-log -message "group ""$($grouptempobject.display_name)"" is not a member from a parent group."
     }
     #$groupsproxy.delete("default",$grouptempobject.id)
+    write-log "removing v_temporary group $($grouptempobject.display_name)" -Level Warn
 }
 
 
