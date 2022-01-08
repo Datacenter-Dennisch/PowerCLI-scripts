@@ -105,7 +105,7 @@ do  {
 #filter temporary objects from all groups based on tag scope "v_temporary"
 $grouptempobjects = $groupobjects.where({$_.tags.scope -eq "v_temporary"})
 
-foreach ($grouptempobject in $grouptempobjects[0]) {
+foreach ($grouptempobject in $grouptempobjects) {
     
     write-log -message "retrieve parent group target from temporary group object ""$($grouptempobject.display_name)""."
     $ParentGroupsTargets = $groupassocsproxy.list($grouptempobject.path).results
