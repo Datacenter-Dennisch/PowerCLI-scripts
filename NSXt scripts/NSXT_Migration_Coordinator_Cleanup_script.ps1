@@ -1,3 +1,7 @@
+#author: Dennis Lefeber (vViking)
+#date :9-1-2022
+#Warning: the use of this script is your own responsibility!
+
 function Write-Log {
     [CmdletBinding()]
     Param
