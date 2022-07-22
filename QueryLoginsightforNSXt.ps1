@@ -356,8 +356,8 @@ function Enum-PSLoginsightevent {
     }
 }
 
-$VRLIFDQN = "vrli.ssc.lan"
-$NSXtMgrFQDN = "w01nsx03.ssc.lan"
+$VRLIFDQN = "vrli.vViking.nl"
+$NSXtMgrFQDN = "nsxtmgr.vViking.nl"
 
 if (!$Global:DefaultPSLogInsightserver) {
     do {
@@ -392,8 +392,8 @@ $Targetrules = $NSXDFWFirewalrulesyproxy.list("default",$TargetSecurityPolicy.id
 
 #retrieve and filter NSXt Security Groups
 $NSXSecurityGroupProxy = Get-NsxtPolicyService -name com.vmware.nsx_policy.infra.domains.groups
-$enumSecurityGroups = $NSXSecurityGroupProxy.list("default").results.where({$_.display_name -match "env_|infraSvc|appl_|tier|provider|consumer"})
-
+$enumSecurityGroups = $NSXSecurityGroupProxy.list("default").results.where({$_.display_name -match "SG_"}) #MODIFY TO LIMIT SECURITY GROUP FILTER
+ 
 
 if (!$AllsecurityGroupsMemberOverview) {
     $NSXSecurityGroupMemberVMProxy =  Get-NsxtPolicyService -name com.vmware.nsx_policy.infra.domains.groups.members.virtual_machines
