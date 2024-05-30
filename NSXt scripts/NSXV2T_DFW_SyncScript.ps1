@@ -1,4 +1,4 @@
-$host.ui.RawUI.WindowTitle = “NSX DC1.5 Rood to Green Migration Script powered by Dennis Lefeber (ITQ) - vViking.nl”
+$host.ui.RawUI.WindowTitle = “NSX  Migration Script powered by Dennis Lefeber (ITQ) - vViking.nl”
 
 function Write-Log
 {
@@ -78,7 +78,7 @@ if (!$DefaultNSXConnection) {
     
     do {
         $Credential = Get-Credential
-        $NSXvMgrIp = "dcm-ipva-nsx002.adm.dcm.local"
+        $NSXvMgrIp = "nsxvmgr.vviking.local"
         Write-log -message "Connecting to NSX-v manager ""$($NSXvMgrIp)"" " -Level Info
         $null = Connect-NsxServer -NsxServer $NSXvMgrIp -Credential $Credential -VICredential $Credential
     } while (!$DefaultNSXConnection)
