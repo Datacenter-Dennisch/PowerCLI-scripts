@@ -327,6 +327,54 @@ function Get-VRNI-ConnectedVMs {
     return $ConnectedVMList 
 }
 
+
+function ConvertTo-IANAServiceName {
+    param (
+        [Parameter(Position=0,mandatory=$true, ValueFromPipeline=$true)]
+        [string]$PortNumber,
+        [Parameter(Position=1,mandatory=$true, ValueFromPipeline=$true)]
+        [ValidateSet('tcp','udp')]
+        [string]$Protocol
+    )
+
+    #set global IANA service port variable when not present .. takes some time only the first time.
+    if (!$global:IANA_Port_data) {
+        #set temp file location for IANA Service CSV file
+        $IANA_outputfile = "C:\temp\ianaports.csv"
+
+        #download IANA Service CSV file if not present
+        if (!(Test-Path $IANA_outputfile)) {Invoke-WebRequest "https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.csv" -OutFile $IANA_outputfile}
+
+        #import IANA Service CSV file to global variable
+        $global:IANA_Port_data = import-csv $IANA_outputfile -Delimiter ","
+    }
+
+    $result  = $global:IANA_Port_data.Where({$_.'Port Number' -eq $PortNumber -and $_.'Transport Protocol' -eq $Protocol})
+
+    return [pscustomobject]@{Portnumber = $PortNumber; Protocol = $Protocol; ServiceName = $result.'Service Name'}
+}
+
+function Get-VRNI-VM-InboundPorts{
+    param (
+        [Parameter(Position=0,mandatory=$true)]
+        [string]$VmName
+    )
+
+    #retrieve inbound ports for specified VM
+    #$transportprotocols = @("TCP", "UDP")
+    Foreach ($transportprotocol in @("TCP", "UDP")) {
+        $query = "flows where destination vm = '$VmName' and protocol = '$transportprotocol' group by Port" 
+
+        #execute VRNI query to retrieve port information based on flow information
+        $jsonbody = @{query=$query;size=1000;time_range= @{start_time=[int]$epochdaysofdata;end_time=[int]$epochnow}} | ConvertTo-Json
+        $url = $VRNIFQDN +"/api/ni/search/ql"
+        $PortList = (Invoke-RestMethod $url -Method POST -ContentType 'application/json' -Headers @{"AUTHORIZATION"=$authVal} -Body $jsonbody).groupby_response.results.bucket.value
+        $returnlist += $PortList.ForEach({if ($_ -lt 49152 -and $_ -notlike "-") {ConvertTO-IANAServiceName -PortNumber $_ -Protocol $transportprotocol}})
+    }
+    
+    return ($returnlist)
+}
+
 $DomaincontrollerVMlist = Get-VRNI-VMsByService -PortName ldap
 $DNSVMlist = Get-VRNI-VMsByService -PortName dns
 $NTPVMlist = Get-VRNI-VMsByService -PortName ntp
